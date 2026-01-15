@@ -167,7 +167,7 @@ export const PollDetailPage: React.FC = () => {
       </div>
 
       {/* Share CTA */}
-      <div className="rounded-2xl bg-gradient-to-r from-brand-primary to-brand-secondary p-8 text-white text-center animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+      <div className="rounded-2xl bg-linear-to-r from-brand-primary to-brand-secondary p-8 text-white text-center animate-fade-in-up" style={{ animationDelay: '300ms' }}>
         <h3 className="text-xl font-bold mb-2">
           Share This Poll
         </h3>

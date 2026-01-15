@@ -8,7 +8,7 @@ export const PollsPage: React.FC = () => {
       {/* Page Header */}
       <div className="animate-fade-in">
         <div className="flex items-center gap-3 mb-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-primary to-brand-secondary shadow-lg">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-brand-primary to-brand-secondary shadow-lg">
             <Vote size={24} className="text-white" />
           </div>
           <div>

@@ -12,7 +12,7 @@ export const Footer: React.FC = () => {
           {/* Left - Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-secondary">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-brand-primary to-brand-secondary">
                 <span className="text-white font-bold text-sm">UP</span>
               </div>
               <span className="text-lg font-bold text-text dark:text-white">

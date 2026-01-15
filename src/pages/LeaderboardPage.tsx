@@ -54,7 +54,7 @@ export const LeaderboardPage: React.FC = () => {
       {/* Page Header */}
       <div className="animate-fade-in">
         <div className="flex items-center gap-3 mb-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 shadow-lg">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-yellow-500 to-orange-500 shadow-lg">
             <Trophy size={24} className="text-white" />
           </div>
           <div>
@@ -99,14 +99,14 @@ export const LeaderboardPage: React.FC = () => {
                 return (
                   <div
                     key={uni.id}
-                    className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gray-50 dark:from-background-elevated dark:to-background-subtle border-2 p-6 hover:shadow-2xl transition-all hover:scale-105"
+                    className="relative overflow-hidden rounded-2xl bg-linear-to-br from-white to-gray-50 dark:from-background-elevated dark:to-background-subtle border-2 p-6 hover:shadow-2xl transition-all hover:scale-105"
                     style={{ 
                       borderColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32',
                       animationDelay: `${index * 100}ms`
                     }}
                   >
                     {/* Decorative Background */}
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-full blur-3xl" />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-yellow-500/10 to-transparent rounded-full blur-3xl" />
                     
                     <div className="relative">
                       {/* Rank Badge */}
@@ -168,7 +168,7 @@ export const LeaderboardPage: React.FC = () => {
                     className="flex items-center gap-4 p-5 rounded-xl bg-white dark:bg-background-elevated border border-border-light dark:border-border hover:shadow-lg transition-all hover:scale-[1.01] group"
                   >
                     {/* Rank Number */}
-                    <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg bg-background-subtle dark:bg-background-hover text-text dark:text-white font-bold text-lg">
+                    <div className="shrink-0 w-12 h-12 flex items-center justify-center rounded-lg bg-background-subtle dark:bg-background-hover text-text dark:text-white font-bold text-lg">
                       #{rank}
                     </div>
 

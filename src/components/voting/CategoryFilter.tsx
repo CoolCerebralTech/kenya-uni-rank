@@ -32,7 +32,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
 }) => {
   return (
     <div className="mb-8 animate-fade-in-up">
-      <h3 className="text-sm font-bold text-text dark:text-white mb-4 uppercase tracking-wide">
+      <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wide">
         Filter by Category
       </h3>
       
@@ -51,8 +51,8 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                 group flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm
                 transition-all duration-200 border-2
                 ${isSelected 
-                  ? 'bg-brand-primary text-white border-brand-primary shadow-lg scale-105' 
-                  : 'bg-white dark:bg-background-elevated text-text-subtle dark:text-gray-400 border-border-light dark:border-border hover:border-brand-primary/50 hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105' 
+                  : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                 }
               `}
             >
@@ -66,7 +66,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                   ml-1 px-2 py-0.5 rounded-full text-xs font-bold
                   ${isSelected 
                     ? 'bg-white/20 text-white' 
-                    : 'bg-background-subtle dark:bg-background-hover text-text-muted'
+                    : 'bg-gray-100 dark:bg-slate-700 text-gray-500'
                   }
                 `}>
                   {count}

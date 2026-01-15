@@ -74,7 +74,7 @@ export const PollList: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3 mb-8">
-          <div className="h-10 w-64 bg-background-subtle dark:bg-background-hover rounded-xl animate-pulse" />
+          <div className="h-10 w-64 bg-gray-200 dark:bg-slate-700 rounded-xl animate-pulse" />
         </div>
         <LoadingSkeleton variant="poll" count={3} />
       </div>
@@ -83,13 +83,13 @@ export const PollList: React.FC = () => {
 
   if (error) {
     return (
-      <div className="rounded-2xl bg-danger/10 dark:bg-danger/20 border-2 border-danger/30 p-8 text-center animate-fade-in">
-        <AlertCircle size={48} className="mx-auto mb-4 text-danger" />
-        <h3 className="text-xl font-bold text-danger mb-2">Oops!</h3>
-        <p className="text-text-subtle dark:text-gray-400">{error}</p>
+      <div className="rounded-2xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 p-8 text-center animate-fade-in">
+        <AlertCircle size={48} className="mx-auto mb-4 text-red-500" />
+        <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Oops!</h3>
+        <p className="text-gray-600 dark:text-gray-400">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 px-6 py-2 bg-danger text-white rounded-lg hover:bg-danger-dark transition-colors"
+          className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           Refresh Page
         </button>
@@ -99,12 +99,12 @@ export const PollList: React.FC = () => {
 
   if (polls.length === 0) {
     return (
-      <div className="rounded-2xl bg-white dark:bg-background-elevated border border-border-light dark:border-border p-12 text-center shadow-md animate-fade-in">
-        <Sparkles size={48} className="mx-auto mb-4 text-brand-primary opacity-50" />
-        <h3 className="text-xl font-bold text-text dark:text-white mb-2">
+      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-gray-700 p-12 text-center shadow-md animate-fade-in">
+        <Sparkles size={48} className="mx-auto mb-4 text-blue-500 opacity-50" />
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
           No Active Polls Yet
         </h3>
-        <p className="text-text-subtle dark:text-gray-400">
+        <p className="text-gray-500 dark:text-gray-400">
           Check back soon for new polls!
         </p>
       </div>
@@ -115,13 +115,13 @@ export const PollList: React.FC = () => {
     <div className="space-y-6">
       {/* Search Bar */}
       <div className="relative animate-fade-in-up">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={20} />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         <input
           type="text"
           placeholder="Search polls..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-border-light dark:border-border bg-white dark:bg-background-elevated text-text dark:text-white placeholder:text-text-muted focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-all"
+          className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
         />
       </div>
 
@@ -134,11 +134,11 @@ export const PollList: React.FC = () => {
 
       {/* Results Count */}
       <div className="flex items-center justify-between animate-fade-in-up">
-        <p className="text-sm text-text-subtle dark:text-gray-400">
-          Showing <span className="font-bold text-text dark:text-white">{filteredPolls.length}</span> {filteredPolls.length === 1 ? 'poll' : 'polls'}
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Showing <span className="font-bold text-gray-900 dark:text-white">{filteredPolls.length}</span> {filteredPolls.length === 1 ? 'poll' : 'polls'}
           {selectedCategory && (
             <span className="ml-1">
-              in <span className="font-semibold text-brand-primary">{selectedCategory}</span>
+              in <span className="font-semibold text-blue-600 dark:text-blue-400">{selectedCategory}</span>
             </span>
           )}
         </p>
@@ -148,7 +148,7 @@ export const PollList: React.FC = () => {
               setSelectedCategory(null);
               setSearchQuery('');
             }}
-            className="text-sm text-brand-primary hover:text-brand-primary-hover font-medium transition-colors"
+            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium transition-colors"
           >
             Clear filters
           </button>
@@ -157,12 +157,12 @@ export const PollList: React.FC = () => {
 
       {/* Poll Cards */}
       {filteredPolls.length === 0 ? (
-        <div className="rounded-2xl bg-white dark:bg-background-elevated border border-border-light dark:border-border p-12 text-center shadow-md animate-fade-in">
-          <Search size={48} className="mx-auto mb-4 text-text-muted opacity-50" />
-          <h3 className="text-xl font-bold text-text dark:text-white mb-2">
+        <div className="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-gray-700 p-12 text-center shadow-md animate-fade-in">
+          <Search size={48} className="mx-auto mb-4 text-gray-300 opacity-50" />
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
             No Polls Found
           </h3>
-          <p className="text-text-subtle dark:text-gray-400 mb-4">
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
             Try adjusting your search or filters
           </p>
           <button
@@ -170,7 +170,7 @@ export const PollList: React.FC = () => {
               setSelectedCategory(null);
               setSearchQuery('');
             }}
-            className="px-6 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-hover transition-colors"
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Show All Polls
           </button>

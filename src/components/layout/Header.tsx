@@ -13,8 +13,8 @@ export const Header: React.FC = () => {
           <Link to="/" className="flex items-center gap-2 group">
             {/* Logo Icon */}
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-lg blur opacity-50 group-hover:opacity-75 transition-opacity" />
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-secondary shadow-md group-hover:shadow-lg transition-all group-hover:scale-105">
+              <div className="absolute inset-0 bg-linear-to-r from-brand-primary to-brand-secondary rounded-lg blur opacity-50 group-hover:opacity-75 transition-opacity" />
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-br from-brand-primary to-brand-secondary shadow-md group-hover:shadow-lg transition-all group-hover:scale-105">
                 <BarChart3 size={22} strokeWidth={2.5} className="text-white" />
               </div>
             </div>

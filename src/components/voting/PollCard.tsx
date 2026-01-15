@@ -14,7 +14,7 @@ interface PollCardProps {
 }
 
 export const PollCard: React.FC<PollCardProps> = ({ poll }) => {
-  const { fingerprint, loading: fpLoading, isReady } = useFingerprint();
+  const { loading: fpLoading, isReady } = useFingerprint();
   
   const [hasVoted, setHasVoted] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
@@ -82,9 +82,9 @@ export const PollCard: React.FC<PollCardProps> = ({ poll }) => {
     <>
       <div className="group mb-6 overflow-hidden rounded-2xl bg-white dark:bg-background-elevated shadow-md hover:shadow-xl border border-border-light dark:border-border transition-all duration-300 hover:scale-[1.01] animate-fade-in-up">
         {/* Poll Header */}
-        <div className="relative border-b border-border-light dark:border-border bg-gradient-to-r from-background-light to-background-light/50 dark:from-background-subtle dark:to-background-subtle/50 px-6 py-5">
+        <div className="relative border-b border-border-light dark:border-border bg-linear-to-r from-background-light to-background-light/50 dark:from-background-subtle dark:to-background-subtle/50 px-6 py-5">
           {/* Decorative Element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-primary/10 to-transparent rounded-full blur-2xl" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-brand-primary/10 to-transparent rounded-full blur-2xl" />
           
           <div className="relative">
             {/* Category Badge & Status */}
@@ -126,7 +126,7 @@ export const PollCard: React.FC<PollCardProps> = ({ poll }) => {
         <div className="p-6">
           {error && (
             <div className="mb-4 flex items-start gap-3 rounded-xl bg-danger/10 dark:bg-danger/20 border border-danger/30 p-4 text-sm text-danger animate-slide-down">
-              <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+              <AlertCircle size={18} className="shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold mb-1">Oops! Something went wrong</p>
                 <p className="text-xs opacity-90">{error}</p>

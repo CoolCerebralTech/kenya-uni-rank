@@ -42,7 +42,7 @@ export const PollResults: React.FC<PollResultsProps> = ({
     fetchResults();
   }, [fetchResults]);
 
-  // Auto-refresh interval
+  // Auto-refresh interval (Backup for realtime)
   useEffect(() => {
     if (!autoRefresh) return;
 
@@ -71,7 +71,7 @@ export const PollResults: React.FC<PollResultsProps> = ({
     fetchResults();
   };
 
-  // Calculate time since last update
+  // Calculate time since last update string
   const getTimeSinceUpdate = () => {
     const seconds = Math.floor((new Date().getTime() - lastUpdate.getTime()) / 1000);
     if (seconds < 5) return 'just now';
@@ -82,8 +82,8 @@ export const PollResults: React.FC<PollResultsProps> = ({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-40 text-text-muted animate-fade-in">
-        <Loader2 className="animate-spin mb-3 text-brand-primary" size={32} />
+      <div className="flex flex-col items-center justify-center h-40 text-gray-400 animate-fade-in">
+        <Loader2 className="animate-spin mb-3 text-blue-600" size={32} />
         <span className="text-sm">Loading results...</span>
       </div>
     );
@@ -92,11 +92,11 @@ export const PollResults: React.FC<PollResultsProps> = ({
   if (totalVotes === 0) {
     return (
       <div className="py-8 text-center animate-fade-in">
-        <TrendingUp size={48} className="mx-auto mb-3 text-text-muted opacity-50" />
-        <p className="text-text-subtle dark:text-gray-400 mb-1">
+        <TrendingUp size={48} className="mx-auto mb-3 text-gray-300 opacity-50" />
+        <p className="text-gray-500 dark:text-gray-400 mb-1">
           No votes yet
         </p>
-        <p className="text-sm text-text-muted dark:text-gray-500">
+        <p className="text-sm text-gray-400 dark:text-gray-500">
           Be the first to vote!
         </p>
       </div>
@@ -108,11 +108,11 @@ export const PollResults: React.FC<PollResultsProps> = ({
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h4 className="font-bold text-text dark:text-white">Live Results</h4>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-success/20 text-success text-xs font-semibold border border-success/30">
+          <h4 className="font-bold text-gray-900 dark:text-white">Live Results</h4>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold border border-green-200 dark:border-green-800">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
             Live
           </span>
@@ -121,7 +121,7 @@ export const PollResults: React.FC<PollResultsProps> = ({
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-text-subtle hover:text-brand-primary dark:hover:text-brand-primary transition-colors rounded-lg hover:bg-brand-primary/5 disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50"
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
@@ -132,15 +132,15 @@ export const PollResults: React.FC<PollResultsProps> = ({
       <PollResultList results={results} totalVotes={totalVotes} />
       
       {/* Footer Info */}
-      <div className="mt-6 pt-4 border-t border-border-light dark:border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
-        <span className="text-text-subtle dark:text-gray-400">
+      <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+        <span className="text-gray-400 dark:text-gray-500">
           Updated {getTimeSinceUpdate()}
         </span>
         <div className="flex items-center gap-4">
-          <span className="text-text-subtle dark:text-gray-400">
-            Total: <span className="font-bold text-text dark:text-white">{totalVotes.toLocaleString()}</span> votes
+          <span className="text-gray-500 dark:text-gray-400">
+            Total: <span className="font-bold text-gray-900 dark:text-white">{totalVotes.toLocaleString()}</span> votes
           </span>
-          <span className="text-text-muted dark:text-gray-500">
+          <span className="text-gray-400 dark:text-gray-500">
             {results.length} universities
           </span>
         </div>
