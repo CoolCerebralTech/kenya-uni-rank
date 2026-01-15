@@ -1,73 +1,106 @@
-# React + TypeScript + Vite
+# 🎓 UniPulse (MVP)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+UniPulse is a **frictionless, poll-based platform** that lets students vote on
+and compare Kenyan universities based on **real student sentiment** — not
+official rankings.
 
-Currently, two official plugins are available:
+The MVP focuses on **Nairobi’s major universities** and uses a **no-signup,
+one-click voting** experience inspired by platforms like Polymarket (without
+betting).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 🚀 Product Vision
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Choosing a university in Kenya is often based on hearsay.
+UniPulse aims to make that decision **transparent, social, and data-driven**
+by aggregating anonymous student opinions into clear visual rankings.
 
-## Expanding the ESLint configuration
+This MVP answers one question:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+> **Do students care enough to vote and compare universities publicly?**
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🧪 MVP Scope (Very Important)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+This is an **early validation build**, not a full product.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### What the MVP **does**
+- Displays live polls comparing universities
+- Allows users to vote with **one click**
+- Shows real-time results as charts and rankings
+- Works fully on mobile
+- Prevents repeat voting using browser fingerprinting
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### What the MVP **does NOT do**
+- No user accounts or sign-up
+- No comments or reviews
+- No payments or ads
+- No predictions or betting
+- No AI analysis (yet)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+
+## 🏫 Universities Included (MVP)
+
+- University of Nairobi (UoN)
+- Kenyatta University (KU)
+- Jomo Kenyatta University of Agriculture and Technology (JKUAT)
+- Strathmore University
+- USIU-Africa
+- Mount Kenya University (MKU)
+- Technical University of Kenya (TUK)
+
+---
+
+## 🗳️ Voting Categories
+
+Each poll belongs to one of the following categories:
+
+### `general`
+- Best Overall Student Experience  
+- Best Value for Money  
+- University You’d Recommend to a Friend  
+
+### `vibes`
+- Best Campus Life & Vibes  
+- Most Fun Campus  
+- Best Events & Student Activities  
+
+### `sports`
+- Best Sports Facilities  
+
+### `academics`
+- Best Academic Environment  
+
+More categories will be added **only after validation**.
+
+---
+
+## 🧱 Tech Stack
+
+### Frontend
+- React + Vite
+- TypeScript
+- Tailwind CSS
+- Charting (Recharts / Chart.js)
+
+### Backend
+- Supabase (PostgreSQL)
+- Minimal REST APIs
+- Server-side vote aggregation
+
+### Deployment
+- Frontend: Vercel / Netlify
+- Backend: Supabase
+
+---
+
+## 🧩 Core Data Models
+
+```ts
+University
+Poll
+Vote
+PollResult

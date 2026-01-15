@@ -44,7 +44,7 @@ export const PollResults: React.FC<PollResultsProps> = ({ pollId, autoRefresh = 
 
   if (loading) {
     return (
-      <div className="flex h-40 items-center justify-center text-gray-400">
+      <div className="flex h-40 items-center justify-center text-text-muted">
         <Loader2 className="animate-spin" size={24} />
       </div>
     );
@@ -54,20 +54,20 @@ export const PollResults: React.FC<PollResultsProps> = ({ pollId, autoRefresh = 
 
   if (totalVotes === 0) {
     return (
-      <div className="py-6 text-center text-sm text-gray-500">
+      <div className="py-6 text-center text-sm text-text-muted animate-fade-in">
         No votes yet. Be the first!
       </div>
     );
   }
 
   return (
-    <div className="animate-in fade-in duration-500">
+    <div className="animate-fade-in">
       <div className="mb-4 flex items-center justify-between">
-        <h4 className="font-medium text-gray-700">Live Results</h4>
+        <h4 className="font-display text-text dark:text-inverted">Live Results</h4>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+          className="flex items-center gap-1 text-sm text-text-muted hover:text-primary-500 transition-colors"
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           {refreshing ? 'Refreshing...' : 'Refresh'}
@@ -76,7 +76,7 @@ export const PollResults: React.FC<PollResultsProps> = ({ pollId, autoRefresh = 
       
       <PollResultList results={results} totalVotes={totalVotes} />
       
-      <div className="mt-4 flex justify-between text-xs text-gray-400">
+      <div className="mt-4 flex justify-between text-xs text-text-subtle dark:text-text-muted">
         <span>Updated just now</span>
         <span>Total votes: {totalVotes.toLocaleString()}</span>
       </div>

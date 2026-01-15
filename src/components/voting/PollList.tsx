@@ -26,14 +26,14 @@ export const PollList: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-64 w-full items-center justify-center">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
+        <Loader2 className="animate-spin text-primary-500" size={32} />
       </div>
     );
   }
 
   if (polls.length === 0) {
     return (
-      <div className="rounded-lg bg-white p-8 text-center text-gray-500 shadow-sm">
+      <div className="rounded-lg bg-background-card dark:bg-background-elevated p-8 text-center text-text-muted shadow-card animate-fade-in">
         No active polls right now. Check back later!
       </div>
     );

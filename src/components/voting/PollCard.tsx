@@ -52,26 +52,26 @@ export const PollCard: React.FC<PollCardProps> = ({ poll }) => {
 
 
   return (
-    <div className="mb-6 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+    <div className="mb-6 overflow-hidden rounded-xl bg-background-card dark:bg-background-elevated shadow-card ring-1 ring-border-light dark:ring-border transition-all hover:shadow-glow-blue animate-slide-up">
       {/* Poll Header */}
-      <div className="border-b border-gray-100 bg-gray-50/50 px-6 py-4">
+      <div className="border-b border-border-light dark:border-border bg-background-muted/50 dark:bg-background-hover px-6 py-4">
         <div className="mb-1 flex items-center gap-2">
-          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+          <span className="inline-flex items-center rounded-full bg-brand-blue/20 px-2.5 py-0.5 text-xs font-medium text-brand-blue">
             {poll.category.toUpperCase()}
           </span>
           {hasVoted && (
-            <span className="text-xs font-medium text-green-600">
+            <span className="text-xs font-medium text-success">
               ✓ Voted
             </span>
           )}
         </div>
-        <h3 className="text-lg font-bold text-gray-900">{poll.question}</h3>
+        <h3 className="text-lg font-display text-text dark:text-inverted">{poll.question}</h3>
       </div>
 
       {/* Poll Body */}
       <div className="p-6">
         {error && (
-          <div className="mb-4 flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-600">
+          <div className="mb-4 flex items-center gap-2 rounded-md bg-danger-light p-3 text-sm text-danger animate-fade-in">
             <AlertCircle size={16} />
             {error}
           </div>
@@ -79,12 +79,12 @@ export const PollCard: React.FC<PollCardProps> = ({ poll }) => {
 
         {/* Loading State (waiting for fingerprint) */}
         {fpLoading ? (
-          <div className="flex h-32 items-center justify-center text-gray-400">
+          <div className="flex h-32 items-center justify-center text-text-muted">
              <span className="text-sm">Loading poll...</span>
           </div>
         ) : hasVoted ? (
           // --- SHOW RESULTS IF VOTED ---
-          <div className="animate-in fade-in zoom-in duration-300">
+          <div className="animate-scale-in">
              <PollResults pollId={poll.id} />
           </div>
         ) : (

@@ -13,12 +13,12 @@ export const VoteOptions: React.FC<VoteOptionsProps> = ({ onVote, isVoting }) =>
   const privateUnis = UniversityService.getByType('Private');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-slide-up">
       {/* Public Universities Section */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-          <h4 className="text-sm font-semibold text-gray-700">Public Universities</h4>
+          <div className="h-2 w-2 rounded-full bg-brand-blue"></div>
+          <h4 className="text-sm font-display text-text dark:text-inverted">Public Universities</h4>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {publicUnis.map((uni) => (
@@ -35,8 +35,8 @@ export const VoteOptions: React.FC<VoteOptionsProps> = ({ onVote, isVoting }) =>
       {/* Private Universities Section */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-purple-500"></div>
-          <h4 className="text-sm font-semibold text-gray-700">Private Universities</h4>
+          <div className="h-2 w-2 rounded-full bg-brand-purple"></div>
+          <h4 className="text-sm font-display text-text dark:text-inverted">Private Universities</h4>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {privateUnis.map((uni) => (
@@ -62,16 +62,16 @@ const UniversityOption: React.FC<{
   <button
     onClick={() => onVote(uni.id)}
     disabled={isVoting}
-    className="group relative flex w-full items-center justify-between overflow-hidden rounded-lg border border-gray-200 bg-white px-4 py-3 text-left transition-all hover:border-blue-300 hover:bg-blue-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+    className="group relative flex w-full items-center justify-between overflow-hidden rounded-lg border border-border-light dark:border-border bg-background-card dark:bg-background-elevated px-4 py-3 text-left transition-all hover:border-primary-300 hover:bg-primary-50/50 dark:hover:bg-primary-900/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 shadow-card hover:shadow-glow-blue"
     style={{ borderLeftColor: uni.color, borderLeftWidth: '3px' }}
   >
     <div className="flex flex-col">
-      <span className="font-semibold text-gray-900">{uni.shortName}</span>
-      <span className="text-xs text-gray-500">{uni.name}</span>
-      <span className="text-xs text-gray-400">{uni.location}</span>
+      <span className="font-display text-text dark:text-inverted">{uni.shortName}</span>
+      <span className="text-xs text-text-subtle dark:text-text-muted">{uni.name}</span>
+      <span className="text-xs text-text-subtle dark:text-text-muted">{uni.location}</span>
     </div>
 
-    <div className="text-gray-400 transition-colors group-hover:text-blue-600">
+    <div className="text-text-muted transition-colors group-hover:text-primary-500">
       {isVoting ? (
         <Loader2 className="animate-spin" size={18} />
       ) : (

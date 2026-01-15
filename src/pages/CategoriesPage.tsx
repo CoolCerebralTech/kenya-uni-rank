@@ -1,89 +1,91 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, Flame, GraduationCap, DollarSign, Star, TrendingUp } from 'lucide-react';
+import { Trophy, Flame, GraduationCap, Star, TrendingUp } from 'lucide-react';
 
 const categories = [
+  { 
+    id: 'general', 
+    name: 'General Experience', 
+    icon: Star, 
+    gradient: 'gradient-purple',
+    bg: 'bg-background-elevated',
+    border: 'border-brand-purple/30'
+  },
   { 
     id: 'vibes', 
     name: 'Campus Life & Vibes', 
     icon: Flame, 
-    gradient: 'from-pink-500 to-rose-500',
-    bg: 'bg-gradient-to-br from-pink-500/10 to-rose-500/10',
-    border: 'border-pink-500/30'
+    gradient: 'gradient-pink',
+    bg: 'bg-background-elevated',
+    border: 'border-brand-pink/30'
   },
   { 
     id: 'sports', 
     name: 'Sports & Facilities', 
     icon: Trophy, 
-    gradient: 'from-amber-500 to-orange-500',
-    bg: 'bg-gradient-to-br from-amber-500/10 to-orange-500/10',
-    border: 'border-amber-500/30'
+    gradient: 'gradient-orange',
+    bg: 'bg-background-elevated',
+    border: 'border-brand-orange/30'
   },
   { 
     id: 'academics', 
-    name: 'Academic Quality', 
+    name: 'Academic Environment', 
     icon: GraduationCap, 
-    gradient: 'from-blue-500 to-cyan-500',
-    bg: 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10',
-    border: 'border-blue-500/30'
-  },
-  { 
-    id: 'value', 
-    name: 'Value for Money', 
-    icon: DollarSign, 
-    gradient: 'from-emerald-500 to-green-500',
-    bg: 'bg-gradient-to-br from-emerald-500/10 to-green-500/10',
-    border: 'border-emerald-500/30'
-  },
-  { 
-    id: 'general', 
-    name: 'Overall Reputation', 
-    icon: Star, 
-    gradient: 'from-purple-500 to-violet-500',
-    bg: 'bg-gradient-to-br from-purple-500/10 to-violet-500/10',
-    border: 'border-purple-500/30'
+    gradient: 'gradient-blue',
+    bg: 'bg-background-elevated',
+    border: 'border-brand-blue/30'
   },
 ];
 
 export const CategoriesPage: React.FC = () => {
   return (
-    <div className="space-y-8">
+    <div className="space-y-12 animate-fade-in">
+      {/* Header Section - Overview of categories with vibrant student choice theme */}
+      {/* Image: Collage of Kenyan university students in various activities representing categories like studying, sports, events - Place as a full-width hero background or central illustrative image */}
       <div className="text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-gray-800 bg-gray-900 px-4 py-2 text-sm text-gray-400 mb-4">
+        <div className="inline-flex items-center gap-2 rounded-full bg-primary-500/10 px-4 py-2 text-sm text-primary-400 border border-primary-500/30 mb-4 animate-pulse">
           <TrendingUp size={14} />
-          <span>Pick Your Market</span>
+          <span>Explore Categories</span>
         </div>
-        <h2 className="text-3xl font-bold text-white">Browse Categories</h2>
-        <p className="mt-2 text-gray-400">Where do you want to place your vote?</p>
+        <h2 className="text-3xl md:text-hero font-display text-inverted">Choose Your Category</h2>
+        <p className="mt-2 text-subtitle text-text-muted max-w-2xl mx-auto">Dive into polls on vibes, sports, academics, and more. Vote and see what students really think!</p>
       </div>
 
+      {/* Categories Grid - Engaging cards for each category */}
+      {/* Overall Image for Grid: Modern dashboard with category icons and poll previews in a dark UI - Place above the grid as a teaser visual */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {categories.map((cat) => {
+        {categories.map((cat, index) => {
           const Icon = cat.icon;
           return (
             <Link 
               key={cat.id} 
-              to={`/vote?category=${cat.id}`}
-              className={`group relative overflow-hidden rounded-xl border ${cat.border} ${cat.bg} p-6 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-black/50`}
+              to={`/categories/${cat.id}`}
+              className={`group relative overflow-hidden rounded-xl border ${cat.border} ${cat.bg} p-6 transition-all hover:scale-[1.02] hover:shadow-glow-blue animate-slide-up delay-${index * 100}`}
             >
-              {/* Gradient corner accent */}
-              <div className={`absolute right-0 top-0 h-16 w-16 rounded-bl-3xl bg-gradient-to-br ${cat.gradient} opacity-10`}></div>
+              {/* Gradient accent */}
+              <div className={`absolute right-0 top-0 h-16 w-16 rounded-bl-3xl bg-${cat.gradient} opacity-20`}></div>
               
               <div className="relative z-10">
-                <div className={`mb-6 inline-flex rounded-lg bg-gradient-to-br ${cat.gradient} p-3 text-white`}>
+                <div className={`mb-6 inline-flex rounded-lg bg-${cat.gradient} p-3 text-white shadow-glow`}>
                   <Icon size={28} />
                 </div>
                 
-                <h3 className="text-xl font-bold text-white mb-2">{cat.name}</h3>
-                <p className="text-sm text-gray-400 mb-4">View live polls & odds</p>
+                <h3 className="text-xl font-display text-inverted mb-2">{cat.name}</h3>
+                <p className="text-sm text-text-muted mb-4">Vote on polls and view live rankings</p>
                 
-                <div className="flex items-center text-sm text-gray-500 group-hover:text-gray-300">
-                  <span>Trade Votes →</span>
+                <div className="flex items-center text-sm text-text-subtle group-hover:text-primary-500 transition-colors">
+                  <span>Explore Now →</span>
                 </div>
               </div>
               
               {/* Hover effect */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} opacity-0 transition-opacity duration-300 group-hover:opacity-5`}></div>
+              <div className={`absolute inset-0 bg-${cat.gradient} opacity-0 transition-opacity duration-300 group-hover:opacity-10`}></div>
+              
+              {/* Per-Category Image Suggestion - Place as a small thumbnail or background in the card */}
+              {/* For General: Iconic view of University of Nairobi main gate with students */}
+              {/* For Vibes: Kenyan university students at a campus party or event */}
+              {/* For Sports: Students playing soccer on a Kenyan university field */}
+              {/* For Academics: Classroom scene in a Kenyan university with lecturer and students */}
             </Link>
           );
         })}
