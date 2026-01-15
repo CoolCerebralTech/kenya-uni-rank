@@ -54,7 +54,7 @@ export const HomePage: React.FC = () => {
   return (
     <div className="space-y-12">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-brand-primary via-brand-secondary to-brand-accent p-12 text-white animate-fade-in">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-primary via-brand-secondary to-brand-accent p-12 text-white animate-fade-in">
         {/* Decorative Background */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
@@ -107,7 +107,7 @@ export const HomePage: React.FC = () => {
             className="relative overflow-hidden rounded-2xl bg-white dark:bg-background-elevated border border-border-light dark:border-border p-6 hover:shadow-lg transition-all hover:scale-105 group"
             style={{ animationDelay: `${index * 100}ms` }}
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-br from-brand-primary/10 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-brand-primary/10 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform" />
             
             <div className="relative">
               <stat.icon className={`${stat.color} mb-3`} size={24} />
@@ -151,7 +151,7 @@ export const HomePage: React.FC = () => {
                 className="group relative overflow-hidden rounded-xl bg-white dark:bg-background-elevated border border-border-light dark:border-border p-6 hover:shadow-xl transition-all hover:scale-105"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-brand-primary/5 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-primary/5 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform" />
                 
                 <div className="relative">
                   <span className="inline-block px-3 py-1 bg-brand-primary/10 text-brand-primary text-xs font-bold rounded-full mb-3">
@@ -204,7 +204,7 @@ export const HomePage: React.FC = () => {
               return (
                 <div
                   key={uni.id}
-                  className="relative overflow-hidden rounded-xl bg-linear-to-br from-white to-gray-50 dark:from-background-elevated dark:to-background-subtle border-2 border-border-light dark:border-border p-6 hover:shadow-xl transition-all hover:scale-105"
+                  className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-background-elevated dark:to-background-subtle border-2 border-border-light dark:border-border p-6 hover:shadow-xl transition-all hover:scale-105"
                   style={{ 
                     borderColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32',
                     animationDelay: `${index * 100}ms` 
@@ -240,7 +240,7 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-r from-brand-primary to-brand-secondary p-12 text-white text-center animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-primary to-brand-secondary p-12 text-white text-center animate-fade-in-up" style={{ animationDelay: '400ms' }}>
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00em0wLTEwYzAtMi4yMS0xLjc5LTQtNC00cy00IDEuNzktNCA0IDEuNzkgNCA0IDQgNC0xLjc5IDQtNHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20" />
         
         <div className="relative z-10">
