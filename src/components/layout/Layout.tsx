@@ -8,13 +8,15 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="flex min-h-screen flex-col bg-background-light dark:bg-background dark"> {/* Added 'dark' class for default dark mode */}
+    <div className="flex min-h-screen flex-col bg-background-light dark:bg-background">
       {/* Header */}
       <Header />
 
-      {/* Main Content */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        {children}
+      {/* Main Content Area */}
+      <main className="flex-1 w-full">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+          {children}
+        </div>
       </main>
 
       {/* Footer */}

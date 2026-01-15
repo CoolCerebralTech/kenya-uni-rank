@@ -1,33 +1,92 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+export interface VoteTrend {
+  time: string;
+  votes: number;
+  label?: string;
+}
+
 interface VoteTrendLineChartProps {
   data: VoteTrend[];
   color?: string;
+  showGrid?: boolean;
 }
 
-export const VoteTrendLineChart: React.FC<VoteTrendLineChartProps> = ({ data, color = 'var(--tw-primary-500)' }) => {
+export const VoteTrendLineChart: React.FC<VoteTrendLineChartProps> = ({ 
+  data, 
+  color = '#3B82F6',
+  showGrid = true 
+}) => {
+  // Custom Tooltip
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const item = payload[0];
+      
+      return (
+        <div className="rounded-lg border border-border bg-white dark:bg-background-elevated px-4 py-3 shadow-xl">
+          <p className="font-semibold text-text dark:text-white mb-1">
+            {item.payload.label || item.payload.time}
+          </p>
+          <p className="text-sm text-text-subtle dark:text-gray-400">
+            {item.value.toLocaleString()} votes
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="h-64 w-full animate-slide-up">
+    <div className="h-72 w-full animate-slide-up">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--tw-border-light)" />
-          <XAxis dataKey="time" tick={{ fill: 'var(--tw-text-muted)', fontSize: 12 }} />
-          <YAxis tick={{ fill: 'var(--tw-text-muted)', fontSize: 12 }} />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: 'var(--tw-bg-background-elevated)', 
-              border: '1px solid var(--tw-border)', 
-              borderRadius: 'var(--tw-border-radius-lg)', 
-              boxShadow: 'var(--tw-shadow-glow)', 
-              color: 'var(--tw-text-inverted)' 
-            }} 
+        <LineChart 
+          data={data} 
+          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        >
+          {showGrid && (
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke="currentColor"
+              className="text-border-light dark:text-border opacity-30"
+            />
+          )}
+          <XAxis 
+            dataKey="time" 
+            tick={{ 
+              fill: 'currentColor',
+              fontSize: 12
+            }}
+            className="text-text-muted dark:text-gray-400"
           />
-          <Legend verticalAlign="top" height={36} iconSize={10} wrapperStyle={{ fontSize: '0.875rem', color: 'var(--tw-text-muted)' }} />
-          <Line type="monotone" dataKey="votes" stroke={color} activeDot={{ r: 8 }} strokeWidth={2} />
+          <YAxis 
+            tick={{ 
+              fill: 'currentColor',
+              fontSize: 12
+            }}
+            className="text-text-muted dark:text-gray-400"
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend 
+            verticalAlign="top" 
+            height={36} 
+            iconSize={10}
+            wrapperStyle={{ 
+              fontSize: '0.875rem',
+              paddingBottom: '10px'
+            }}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="votes" 
+            stroke={color}
+            strokeWidth={3}
+            dot={{ r: 4, fill: color, strokeWidth: 2, stroke: '#ffffff' }}
+            activeDot={{ r: 6, strokeWidth: 2 }}
+            animationDuration={800}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
 };
-
-// Usage note: For showing vote trends over time, if you add real-time/historical data in future.

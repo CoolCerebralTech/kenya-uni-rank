@@ -1,84 +1,149 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { VotingService } from '../../services/voting';
+import { getPollWithResults, subscribeToPollVotes } from '../../services';
 import type { PollResult } from '../../types';
 import { PollResultList } from '../charts/PollResultList';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, TrendingUp } from 'lucide-react';
 
 interface PollResultsProps {
   pollId: string;
   autoRefresh?: boolean;
+  enableRealtime?: boolean;
 }
 
-export const PollResults: React.FC<PollResultsProps> = ({ pollId, autoRefresh = true }) => {
+export const PollResults: React.FC<PollResultsProps> = ({ 
+  pollId, 
+  autoRefresh = true,
+  enableRealtime = true 
+}) => {
   const [results, setResults] = useState<PollResult[]>([]);
+  const [totalVotes, setTotalVotes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  // Wrap fetchResults in useCallback to make it stable
+  // Fetch results from database
   const fetchResults = useCallback(async () => {
     try {
-      const data = await VotingService.getPollResults(pollId);
-      setResults(data);
+      const { results: pollResults, totalVotes: total } = await getPollWithResults(pollId);
+      
+      setResults(pollResults);
+      setTotalVotes(total);
+      setLastUpdate(new Date());
     } catch (error) {
       console.error('Failed to load results', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [pollId]); // pollId is the only dependency
+  }, [pollId]);
 
+  // Initial load
   useEffect(() => {
     fetchResults();
-    
-    if (autoRefresh) {
-      // Refresh every 30 seconds
-      const interval = setInterval(fetchResults, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [fetchResults, autoRefresh]); // Now includes fetchResults
+  }, [fetchResults]);
 
+  // Auto-refresh interval
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      fetchResults();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchResults]);
+
+  // Real-time subscription
+  useEffect(() => {
+    if (!enableRealtime) return;
+
+    const unsubscribe = subscribeToPollVotes(pollId, () => {
+      // New vote detected, refresh results
+      fetchResults();
+    });
+
+    return unsubscribe;
+  }, [enableRealtime, pollId, fetchResults]);
+
+  // Manual refresh
   const handleRefresh = () => {
     setRefreshing(true);
     fetchResults();
   };
 
+  // Calculate time since last update
+  const getTimeSinceUpdate = () => {
+    const seconds = Math.floor((new Date().getTime() - lastUpdate.getTime()) / 1000);
+    if (seconds < 5) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    return `${Math.floor(seconds / 3600)}h ago`;
+  };
+
   if (loading) {
     return (
-      <div className="flex h-40 items-center justify-center text-text-muted">
-        <Loader2 className="animate-spin" size={24} />
+      <div className="flex flex-col items-center justify-center h-40 text-text-muted animate-fade-in">
+        <Loader2 className="animate-spin mb-3 text-brand-primary" size={32} />
+        <span className="text-sm">Loading results...</span>
       </div>
     );
   }
 
-  const totalVotes = results.reduce((acc, curr) => acc + curr.votes, 0);
-
   if (totalVotes === 0) {
     return (
-      <div className="py-6 text-center text-sm text-text-muted animate-fade-in">
-        No votes yet. Be the first!
+      <div className="py-8 text-center animate-fade-in">
+        <TrendingUp size={48} className="mx-auto mb-3 text-text-muted opacity-50" />
+        <p className="text-text-subtle dark:text-gray-400 mb-1">
+          No votes yet
+        </p>
+        <p className="text-sm text-text-muted dark:text-gray-500">
+          Be the first to vote!
+        </p>
       </div>
     );
   }
 
   return (
     <div className="animate-fade-in">
+      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
-        <h4 className="font-display text-text dark:text-inverted">Live Results</h4>
+        <div className="flex items-center gap-2">
+          <h4 className="font-bold text-text dark:text-white">Live Results</h4>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-success/20 text-success text-xs font-semibold border border-success/30">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+            </span>
+            Live
+          </span>
+        </div>
+        
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-1 text-sm text-text-muted hover:text-primary-500 transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-text-subtle hover:text-brand-primary dark:hover:text-brand-primary transition-colors rounded-lg hover:bg-brand-primary/5 disabled:opacity-50"
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
+          <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
         </button>
       </div>
       
+      {/* Results List */}
       <PollResultList results={results} totalVotes={totalVotes} />
       
-      <div className="mt-4 flex justify-between text-xs text-text-subtle dark:text-text-muted">
-        <span>Updated just now</span>
-        <span>Total votes: {totalVotes.toLocaleString()}</span>
+      {/* Footer Info */}
+      <div className="mt-6 pt-4 border-t border-border-light dark:border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+        <span className="text-text-subtle dark:text-gray-400">
+          Updated {getTimeSinceUpdate()}
+        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-text-subtle dark:text-gray-400">
+            Total: <span className="font-bold text-text dark:text-white">{totalVotes.toLocaleString()}</span> votes
+          </span>
+          <span className="text-text-muted dark:text-gray-500">
+            {results.length} universities
+          </span>
+        </div>
       </div>
     </div>
   );
