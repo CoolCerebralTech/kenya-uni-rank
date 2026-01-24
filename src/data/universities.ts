@@ -1,4 +1,4 @@
-import type { University } from '../types';
+import type { University } from '../types/models';
 
 export const universities: University[] = [
   // --- PUBLIC UNIVERSITIES ---
@@ -186,5 +186,33 @@ export const universities: University[] = [
   }
 ];
 
-// Helper to find a uni by ID quickly
-export const getUni = (id: string) => universities.find((u) => u.id === id);
+// --- OPTIMIZED LOOKUP HELPERS ---
+
+// 1. Create a Map for O(1) access by ID (Much faster than .find() for large datasets/charts)
+const universitiesMap = new Map<string, University>(
+  universities.map((u) => [u.id, u])
+);
+
+/**
+ * Get a university by its ID (O(1) complexity)
+ */
+export const getUniversityById = (id: string): University | undefined => {
+  return universitiesMap.get(id);
+};
+
+/**
+ * Get a university by its Slug (Useful for routing/URLs)
+ */
+export const getUniversityBySlug = (slug: string): University | undefined => {
+  return universities.find((u) => u.slug === slug);
+};
+
+/**
+ * Get all universities of a specific type
+ */
+export const getUniversitiesByType = (type: University['type']): University[] => {
+  return universities.filter((u) => u.type === type);
+};
+
+// Default export if needed, though named exports are preferred for tree-shaking
+export default universities;

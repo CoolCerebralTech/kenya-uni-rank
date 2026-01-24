@@ -1,9 +1,40 @@
+// ============================================================================
+// DATABASE SERVICE - PHASE 2 PRODUCTION (TYPE-SAFE)
+// Handles all Supabase interactions with proper error handling and type safety
+// ============================================================================
+
 import { supabase } from '../lib/supabase';
-import type { Poll, PollResult, University } from '../types';
+import type { Database } from '../types/database.types';
+import type { Poll, PollResult, University, PollCategory } from '../types/models';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 // ============================================================================
-// TYPE DEFINITIONS FOR DATABASE VIEWS
+// TYPE ALIASES FOR CLEANER CODE
+// ============================================================================
+
+type DbPoll = Database['public']['Tables']['polls']['Row'];
+type DbUniversity = Database['public']['Tables']['universities']['Row'];
+type DbVoteInsert = Database['public']['Tables']['votes']['Insert'];
+type DbPollResult = Database['public']['Views']['poll_results']['Row'];
+
+// ============================================================================
+// RESPONSE WRAPPER TYPES
+// ============================================================================
+
+export interface DatabaseResponse<T> {
+  data: T | null;
+  error: string | null;
+  success: boolean;
+}
+
+export interface PollWithResults {
+  poll: Poll | null;
+  results: PollResult[];
+  totalVotes: number;
+}
+
+// ============================================================================
+// DATABASE VIEW TYPES (Match SQL exactly)
 // ============================================================================
 
 export interface TrendingPoll {
@@ -11,9 +42,11 @@ export interface TrendingPoll {
   question: string;
   slug: string;
   category: string;
+  cycle_month: string | null;
   total_votes: number;
-  universities_voted: number;
+  universities_competing: number;
   last_vote_time: string;
+  competition_level: 'high' | 'medium' | 'low';
 }
 
 export interface UniversityLeaderboardEntry {
@@ -22,8 +55,10 @@ export interface UniversityLeaderboardEntry {
   short_name: string;
   type: 'Public' | 'Private';
   color: string;
+  location: string;
   total_votes_received: number;
   polls_participated: number;
+  first_place_finishes: number;
 }
 
 export interface RecentActivity {
@@ -34,39 +69,104 @@ export interface RecentActivity {
   university_name: string;
   university_short_name: string;
   university_color: string;
+  university_type: 'Public' | 'Private';
+  voter_type: string | null;
 }
 
-export interface VotePayload {
-  poll_id: string;
-  university_id: string;
-  fingerprint_hash: string;
-  ip_hash?: string;
+export interface CategoryInsight {
+  category: string;
+  total_polls: number;
+  total_votes: number;
+  universities_active: number;
+  recent_activity_percentage: number;
+  is_trending: boolean;
 }
 
-export interface RealtimeVotePayload {
-  new: {
-    id: string;
-    poll_id: string;
-    university_id: string;
-    created_at: string;
+// ============================================================================
+// UTILITY: DATABASE ROW CONVERTERS (snake_case → camelCase)
+// ============================================================================
+
+function convertDbPollToPoll(dbPoll: DbPoll): Poll {
+  return {
+    id: dbPoll.id,
+    question: dbPoll.question,
+    slug: dbPoll.slug,
+    category: dbPoll.category as PollCategory,
+    isActive: dbPoll.is_active,
+    startsAt: dbPoll.starts_at,
+    endsAt: dbPoll.ends_at,
+    cycleMonth: dbPoll.cycle_month,
+    description: dbPoll.description ?? undefined,
+    displayOrder: dbPoll.display_order,
+    createdAt: dbPoll.created_at,
+    updatedAt: dbPoll.updated_at,
+  };
+}
+
+function convertDbUniversityToUniversity(dbUni: DbUniversity): University {
+  return {
+    id: dbUni.id,
+    slug: dbUni.slug,
+    name: dbUni.name,
+    shortName: dbUni.short_name,
+    type: dbUni.type,
+    location: dbUni.location,
+    color: dbUni.color,
+    description: dbUni.description ?? undefined,
+    established: dbUni.established ?? undefined,
+    website: dbUni.website ?? undefined,
+    studentPopulation: dbUni.student_population ?? undefined,
+    campusSize: dbUni.campus_size ?? undefined,
+  };
+}
+
+function convertDbResultToPollResult(dbResult: DbPollResult): PollResult {
+  return {
+    pollId: dbResult.poll_id,
+    pollQuestion: dbResult.poll_question,
+    category: dbResult.category as PollCategory,
+    cycleMonth: dbResult.cycle_month,
+    universityId: dbResult.university_id,
+    universityName: dbResult.university_name,
+    universityShortName: dbResult.university_short_name,
+    universityColor: dbResult.university_color,
+    universityType: dbResult.university_type as 'Public' | 'Private',
+    votes: dbResult.votes,
+    percentage: dbResult.percentage,
+    rank: dbResult.rank,
   };
 }
 
 // ============================================================================
-// POLLS
+// UTILITY: CYCLE MONTH HELPER
+// ============================================================================
+
+export function getCurrentCycleMonth(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+// ============================================================================
+// POLLS API
 // ============================================================================
 
 /**
- * Fetch all active polls
- * @param category - Optional category filter ('vibes', 'sports', etc.)
+ * Fetch all active polls for current cycle
  */
-export async function getActivePolls(category?: string): Promise<Poll[]> {
+export async function getActivePolls(
+  category?: PollCategory
+): Promise<DatabaseResponse<Poll[]>> {
   try {
+    const currentMonth = getCurrentCycleMonth();
+    
     let query = supabase
       .from('polls')
       .select('*')
       .eq('is_active', true)
-      .order('created_at', { ascending: false });
+      .eq('cycle_month', currentMonth)
+      .order('display_order', { ascending: true });
 
     if (category) {
       query = query.eq('category', category);
@@ -75,21 +175,28 @@ export async function getActivePolls(category?: string): Promise<Poll[]> {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching polls:', error);
-      return [];
+      console.error('[DB] Error fetching active polls:', error);
+      return { data: null, error: error.message, success: false };
     }
 
-    return data as Poll[];
+    const polls = (data || []).map(convertDbPollToPoll);
+    return { data: polls, error: null, success: true };
   } catch (err) {
-    console.error('Unexpected error fetching polls:', err);
-    return [];
+    console.error('[DB] Unexpected error fetching polls:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch polls. Please try again.', 
+      success: false 
+    };
   }
 }
 
 /**
  * Fetch a single poll by slug
  */
-export async function getPollBySlug(slug: string): Promise<Poll | null> {
+export async function getPollBySlug(
+  slug: string
+): Promise<DatabaseResponse<Poll>> {
   try {
     const { data, error } = await supabase
       .from('polls')
@@ -97,22 +204,32 @@ export async function getPollBySlug(slug: string): Promise<Poll | null> {
       .eq('slug', slug)
       .single();
 
-    if (error || !data) {
-      console.error('Error fetching poll:', error);
-      return null;
+    if (error) {
+      console.error('[DB] Error fetching poll by slug:', error);
+      return { data: null, error: error.message, success: false };
     }
 
-    return data as Poll;
+    if (!data) {
+      return { data: null, error: 'Poll not found', success: false };
+    }
+
+    return { data: convertDbPollToPoll(data), error: null, success: true };
   } catch (err) {
-    console.error('Unexpected error fetching poll:', err);
-    return null;
+    console.error('[DB] Unexpected error fetching poll:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch poll. Please try again.', 
+      success: false 
+    };
   }
 }
 
 /**
  * Fetch a single poll by ID
  */
-export async function getPollById(id: string): Promise<Poll | null> {
+export async function getPollById(
+  id: string
+): Promise<DatabaseResponse<Poll>> {
   try {
     const { data, error } = await supabase
       .from('polls')
@@ -120,29 +237,33 @@ export async function getPollById(id: string): Promise<Poll | null> {
       .eq('id', id)
       .single();
 
-    if (error || !data) {
-      console.error('Error fetching poll:', error);
-      return null;
+    if (error) {
+      console.error('[DB] Error fetching poll by ID:', error);
+      return { data: null, error: error.message, success: false };
     }
 
-    return data as Poll;
+    if (!data) {
+      return { data: null, error: 'Poll not found', success: false };
+    }
+
+    return { data: convertDbPollToPoll(data), error: null, success: true };
   } catch (err) {
-    console.error('Unexpected error fetching poll:', err);
-    return null;
+    console.error('[DB] Unexpected error fetching poll:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch poll. Please try again.', 
+      success: false 
+    };
   }
 }
 
 /**
- * Fetch a single poll with its aggregated results
- * This is the MAIN function for displaying poll data
+ * Fetch a poll with its aggregated results
  */
-export async function getPollWithResults(slug: string): Promise<{
-  poll: Poll | null;
-  results: PollResult[];
-  totalVotes: number;
-}> {
+export async function getPollWithResults(
+  slug: string
+): Promise<DatabaseResponse<PollWithResults>> {
   try {
-    // Get the poll
     const { data: pollData, error: pollError } = await supabase
       .from('polls')
       .select('*')
@@ -150,76 +271,149 @@ export async function getPollWithResults(slug: string): Promise<{
       .single();
 
     if (pollError || !pollData) {
-      console.error('Error fetching poll:', pollError);
-      return { poll: null, results: [], totalVotes: 0 };
+      console.error('[DB] Error fetching poll for results:', pollError);
+      return { 
+        data: null, 
+        error: pollError?.message || 'Poll not found', 
+        success: false 
+      };
     }
 
-    // Get aggregated results from the view (NOT raw votes)
     const { data: resultsData, error: resultsError } = await supabase
       .from('poll_results')
       .select('*')
-      .eq('poll_id', pollData.id);
+      .eq('poll_id', pollData.id)
+      .order('votes', { ascending: false });
 
     if (resultsError) {
-      console.error('Error fetching results:', resultsError);
-      return { poll: pollData as Poll, results: [], totalVotes: 0 };
+      console.error('[DB] Error fetching poll results:', resultsError);
+      return { 
+        data: { 
+          poll: convertDbPollToPoll(pollData), 
+          results: [], 
+          totalVotes: 0 
+        }, 
+        error: resultsError.message, 
+        success: false 
+      };
     }
 
-    // Calculate total votes and percentages
-    const totalVotes = resultsData.reduce((sum, item) => sum + item.vote_count, 0);
-
-    const results: PollResult[] = resultsData.map((item) => ({
-      universityId: item.university_id,
-      universityName: item.university_name,
-      universityColor: item.university_color,
-      votes: item.vote_count,
-      percentage: totalVotes > 0 ? (item.vote_count / totalVotes) * 100 : 0,
-    }));
-
-    // Sort by votes descending
-    results.sort((a, b) => b.votes - a.votes);
+    const results = (resultsData || []).map(convertDbResultToPollResult);
+    const totalVotes = results.reduce((sum, r) => sum + r.votes, 0);
 
     return {
-      poll: pollData as Poll,
-      results,
-      totalVotes,
+      data: {
+        poll: convertDbPollToPoll(pollData),
+        results,
+        totalVotes,
+      },
+      error: null,
+      success: true,
     };
   } catch (err) {
-    console.error('Unexpected error fetching poll with results:', err);
-    return { poll: null, results: [], totalVotes: 0 };
+    console.error('[DB] Unexpected error fetching poll with results:', err);
+    return { 
+      data: null, 
+      error: 'Failed to load poll results. Please try again.', 
+      success: false 
+    };
   }
 }
 
 /**
- * Get trending polls (most voted)
+ * Get trending polls (uses database view)
  */
-export async function getTrendingPolls(): Promise<TrendingPoll[]> {
+export async function getTrendingPolls(): Promise<DatabaseResponse<TrendingPoll[]>> {
   try {
     const { data, error } = await supabase
       .from('trending_polls')
-      .select('*');
+      .select('*')
+      .limit(10);
 
     if (error) {
-      console.error('Error fetching trending polls:', error);
-      return [];
+      console.error('[DB] Error fetching trending polls:', error);
+      return { data: null, error: error.message, success: false };
     }
 
-    return (data || []) as TrendingPoll[];
+    // Ensure each item in data has the correct competition_level type
+    const trendingPolls: TrendingPoll[] = (data || []).map((poll) => ({
+      ...poll,
+      competition_level:
+        poll.competition_level === 'high' ||
+        poll.competition_level === 'medium' ||
+        poll.competition_level === 'low'
+          ? poll.competition_level
+          : 'medium', // fallback value if unexpected string
+    }));
+
+    return { data: trendingPolls, error: null, success: true };
   } catch (err) {
-    console.error('Unexpected error fetching trending polls:', err);
-    return [];
+    console.error('[DB] Unexpected error fetching trending polls:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch trending polls.', 
+      success: false 
+    };
+  }
+}
+
+/**
+ * PHASE 2: Check poll status (uses database function)
+ */
+export async function getPollStatus(pollId: string): Promise<DatabaseResponse<{
+  isActive: boolean;
+  isInCycle: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+}>> {
+  try {
+    const { data, error } = await supabase.rpc('get_poll_status', {
+      p_poll_id: pollId,
+    });
+
+    if (error) {
+      console.error('[DB] Error checking poll status:', error);
+      return { data: null, error: error.message, success: false };
+    }
+
+    // RPC returns array, get first result
+    const status = Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+    if (!status) {
+      return { 
+        data: null, 
+        error: 'Poll status unavailable', 
+        success: false 
+      };
+    }
+
+    return {
+      data: {
+        isActive: status.is_active,
+        isInCycle: status.is_in_cycle,
+        startsAt: status.starts_at,
+        endsAt: status.ends_at,
+      },
+      error: null,
+      success: true,
+    };
+  } catch (err) {
+    console.error('[DB] Unexpected error checking poll status:', err);
+    return { 
+      data: null, 
+      error: 'Failed to check poll status.', 
+      success: false 
+    };
   }
 }
 
 // ============================================================================
-// UNIVERSITIES
+// UNIVERSITIES API
 // ============================================================================
 
-/**
- * Get all universities
- * @param type - Optional filter by 'Public' or 'Private'
- */
-export async function getUniversities(type?: 'Public' | 'Private'): Promise<University[]> {
+export async function getUniversities(
+  type?: 'Public' | 'Private'
+): Promise<DatabaseResponse<University[]>> {
   try {
     let query = supabase
       .from('universities')
@@ -233,129 +427,150 @@ export async function getUniversities(type?: 'Public' | 'Private'): Promise<Univ
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching universities:', error);
-      return [];
+      console.error('[DB] Error fetching universities:', error);
+      return { data: null, error: error.message, success: false };
     }
 
-    return data as University[];
+    const universities = (data || []).map(convertDbUniversityToUniversity);
+    return { data: universities, error: null, success: true };
   } catch (err) {
-    console.error('Unexpected error fetching universities:', err);
-    return [];
+    console.error('[DB] Unexpected error fetching universities:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch universities.', 
+      success: false 
+    };
   }
 }
 
-/**
- * Get university leaderboard (overall rankings)
- */
-export async function getUniversityLeaderboard(): Promise<UniversityLeaderboardEntry[]> {
+export async function getUniversityLeaderboard(): Promise<
+  DatabaseResponse<UniversityLeaderboardEntry[]>
+> {
   try {
     const { data, error } = await supabase
       .from('university_leaderboard')
-      .select('*');
+      .select('*')
+      .limit(20);
 
     if (error) {
-      console.error('Error fetching leaderboard:', error);
-      return [];
+      console.error('[DB] Error fetching leaderboard:', error);
+      return { data: null, error: error.message, success: false };
     }
 
-    return (data || []) as UniversityLeaderboardEntry[];
+    // Ensure the `type` property is cast to the correct type
+    const leaderboard = (data || []).map((entry) => ({
+      ...entry,
+      type: entry.type === 'Public' ? 'Public' : 'Private'
+    })) as UniversityLeaderboardEntry[];
+    return { data: leaderboard, error: null, success: true };
   } catch (err) {
-    console.error('Unexpected error fetching leaderboard:', err);
-    return [];
+    console.error('[DB] Unexpected error fetching leaderboard:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch leaderboard.', 
+      success: false 
+    };
   }
 }
 
 // ============================================================================
-// VOTING
+// VOTING API
 // ============================================================================
 
-/**
- * Submit a vote
- * @param pollId - UUID of the poll
- * @param universityId - ID of the university being voted for
- * @param fingerprint - Browser fingerprint hash
- * @param ipHash - Optional IP hash for additional security
- */
 export async function submitVote(
   pollId: string,
   universityId: string,
-  fingerprint: string,
-  ipHash?: string
-): Promise<{ success: boolean; error?: string }> {
+  fingerprintHash: string,
+  ipHash?: string,
+  voterType?: 'student' | 'alumni' | 'applicant' | 'other',
+  userAgent?: string
+): Promise<DatabaseResponse<{ voteId: string }>> {
   try {
-    const voteData: VotePayload = {
+    const voteData: DbVoteInsert = {
       poll_id: pollId,
       university_id: universityId,
-      fingerprint_hash: fingerprint,
+      fingerprint_hash: fingerprintHash,
+      ip_hash: ipHash,
+      voter_type: voterType,
+      user_agent: userAgent,
     };
 
-    if (ipHash) {
-      voteData.ip_hash = ipHash;
-    }
-
-    const { error } = await supabase.from('votes').insert(voteData);
+    const { data, error } = await supabase
+      .from('votes')
+      .insert(voteData)
+      .select('id')
+      .single();
 
     if (error) {
-      // Check if it's a duplicate vote error (PostgreSQL unique constraint)
       if (error.code === '23505') {
         return { 
-          success: false, 
-          error: 'You have already voted in this poll' 
+          data: null, 
+          error: 'You have already voted in this poll', 
+          success: false 
         };
       }
       
-      console.error('Error submitting vote:', error);
+      console.error('[DB] Error submitting vote:', error);
       return { 
-        success: false, 
-        error: error.message || 'Failed to submit vote' 
+        data: null, 
+        error: error.message || 'Failed to submit vote', 
+        success: false 
       };
     }
 
-    return { success: true };
-  } catch (err) {
-    console.error('Unexpected error submitting vote:', err);
+    if (!data) {
+      return {
+        data: null,
+        error: 'Vote submitted but no ID returned',
+        success: false,
+      };
+    }
+
     return { 
-      success: false, 
-      error: 'An unexpected error occurred. Please try again.' 
+      data: { voteId: data.id }, 
+      error: null, 
+      success: true 
+    };
+  } catch (err) {
+    console.error('[DB] Unexpected error submitting vote:', err);
+    return { 
+      data: null, 
+      error: 'An unexpected error occurred. Please try again.', 
+      success: false 
     };
   }
 }
 
-/**
- * Check if user has already voted in a poll
- * Uses the database function for security
- */
 export async function hasUserVoted(
   pollId: string,
-  fingerprint: string
-): Promise<boolean> {
+  fingerprintHash: string
+): Promise<DatabaseResponse<boolean>> {
   try {
-    const { data, error } = await supabase
-      .rpc('has_user_voted', {
-        p_poll_id: pollId,
-        p_fingerprint: fingerprint,
-      });
+    const { data, error } = await supabase.rpc('has_user_voted', {
+      p_poll_id: pollId,
+      p_fingerprint: fingerprintHash,
+    });
 
     if (error) {
-      console.error('Error checking vote status:', error);
-      return false;
+      console.error('[DB] Error checking vote status:', error);
+      return { data: null, error: error.message, success: false };
     }
 
-    return data === true;
+    return { data: data === true, error: null, success: true };
   } catch (err) {
-    console.error('Unexpected error checking vote status:', err);
-    return false;
+    console.error('[DB] Unexpected error checking vote status:', err);
+    return { 
+      data: null, 
+      error: 'Failed to check vote status.', 
+      success: false 
+    };
   }
 }
 
 // ============================================================================
-// REAL-TIME SUBSCRIPTIONS 🔴 LIVE
+// REAL-TIME SUBSCRIPTIONS
 // ============================================================================
 
-/**
- * Subscribe to real-time vote updates for a specific poll
- * Returns a cleanup function to unsubscribe
- */
 export function subscribeToPollVotes(
   pollId: string,
   onVoteAdded: () => void
@@ -371,23 +586,22 @@ export function subscribeToPollVotes(
         filter: `poll_id=eq.${pollId}`,
       },
       () => {
-        // New vote detected! Trigger callback to refresh results
+        console.log('[Realtime] New vote received for poll:', pollId);
         onVoteAdded();
       }
     )
     .subscribe();
 
-  // Return cleanup function
+  console.log('[Realtime] Subscribed to poll:', pollId);
+
   return () => {
+    console.log('[Realtime] Unsubscribing from poll:', pollId);
     supabase.removeChannel(channel);
   };
 }
 
-/**
- * Subscribe to all vote activity (for activity feed)
- */
 export function subscribeToAllVotes(
-  onVoteAdded: (payload: RealtimeVotePayload) => void
+  onVoteAdded: (payload: { pollId: string; universityId: string }) => void
 ): () => void {
   const channel: RealtimeChannel = supabase
     .channel('all-votes')
@@ -399,71 +613,127 @@ export function subscribeToAllVotes(
         table: 'votes',
       },
       (payload) => {
-        onVoteAdded(payload as unknown as RealtimeVotePayload);
+        console.log('[Realtime] New vote received:', payload);
+        const newVote = payload.new as { poll_id: string; university_id: string };
+        onVoteAdded({
+          pollId: newVote.poll_id,
+          universityId: newVote.university_id,
+        });
       }
     )
     .subscribe();
 
+  console.log('[Realtime] Subscribed to all votes');
+
   return () => {
+    console.log('[Realtime] Unsubscribing from all votes');
     supabase.removeChannel(channel);
   };
 }
 
 // ============================================================================
-// ACTIVITY & ANALYTICS
+// ANALYTICS & ACTIVITY
 // ============================================================================
 
-/**
- * Get recent voting activity (last 50 votes)
- */
-export async function getRecentActivity(): Promise<RecentActivity[]> {
-  try {
-    const { data, error } = await supabase
-      .from('recent_activity')
-      .select('*');
-
-    if (error) {
-      console.error('Error fetching recent activity:', error);
-      return [];
-    }
-
-    return (data || []) as RecentActivity[];
-  } catch (err) {
-    console.error('Unexpected error fetching recent activity:', err);
-    return [];
-  }
-}
-
-/**
- * Get poll categories with counts
- */
-export async function getPollCategories(): Promise<
-  Array<{ category: string; count: number }>
+export async function getRecentActivity(): Promise<
+  DatabaseResponse<RecentActivity[]>
 > {
   try {
     const { data, error } = await supabase
-      .from('polls')
-      .select('category')
-      .eq('is_active', true);
+      .from('recent_activity')
+      .select('*')
+      .limit(100);
 
-    if (error || !data) {
-      console.error('Error fetching categories:', error);
-      return [];
+    if (error) {
+      console.error('[DB] Error fetching recent activity:', error);
+      return { data: null, error: error.message, success: false };
     }
 
-    // Count polls per category
-    const categoryMap = new Map<string, number>();
-    data.forEach((item) => {
-      const count = categoryMap.get(item.category) || 0;
-      categoryMap.set(item.category, count + 1);
+    // Ensure the types from the database are mapped to match RecentActivity,
+    // with university_type as 'Public' or 'Private'
+    const mappedData = (data || []).map((item) => ({
+      ...item,
+      university_type:
+        item.university_type === 'Public' || item.university_type === 'Private'
+          ? item.university_type
+          : (item.university_type === 'public' ? 'Public' : 'Private'),
+    }))
+    // Fix typing: ensure university_type is always the correct literal type
+    .map((item) => ({
+      ...item,
+      university_type: item.university_type === 'Public' ? 'Public' : 'Private'
+    }));
+
+    return { data: mappedData as RecentActivity[], error: null, success: true };
+  } catch (err) {
+    console.error('[DB] Unexpected error fetching recent activity:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch recent activity.', 
+      success: false 
+    };
+  }
+}
+
+export async function getCategoryInsights(): Promise<
+  DatabaseResponse<CategoryInsight[]>
+> {
+  try {
+    const { data, error } = await supabase
+      .from('category_insights')
+      .select('*');
+
+    if (error) {
+      console.error('[DB] Error fetching category insights:', error);
+      return { data: null, error: error.message, success: false };
+    }
+
+    return { data: data || [], error: null, success: true };
+  } catch (err) {
+    console.error('[DB] Unexpected error fetching category insights:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch category insights.', 
+      success: false 
+    };
+  }
+}
+
+export async function getPollCategoryCounts(): Promise<
+  DatabaseResponse<Array<{ category: PollCategory; count: number }>>
+> {
+  try {
+    const currentMonth = getCurrentCycleMonth();
+    
+    const { data, error } = await supabase
+      .from('polls')
+      .select('category')
+      .eq('is_active', true)
+      .eq('cycle_month', currentMonth);
+
+    if (error) {
+      console.error('[DB] Error fetching category counts:', error);
+      return { data: null, error: error.message, success: false };
+    }
+
+    const categoryMap = new Map<PollCategory, number>();
+    (data || []).forEach((item) => {
+      const category = item.category as PollCategory;
+      categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
     });
 
-    return Array.from(categoryMap.entries()).map(([category, count]) => ({
+    const counts = Array.from(categoryMap.entries()).map(([category, count]) => ({
       category,
       count,
     }));
+
+    return { data: counts, error: null, success: true };
   } catch (err) {
-    console.error('Unexpected error fetching categories:', err);
-    return [];
+    console.error('[DB] Unexpected error fetching category counts:', err);
+    return { 
+      data: null, 
+      error: 'Failed to fetch category counts.', 
+      success: false 
+    };
   }
 }
