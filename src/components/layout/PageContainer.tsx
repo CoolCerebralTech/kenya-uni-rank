@@ -1,36 +1,21 @@
 import React, { useEffect } from 'react';
 
-interface PageContainerProps {
+// Enhanced with smooth fade-in animation for page transitions
+export const PageContainer: React.FC<{
   children: React.ReactNode;
   className?: string;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
-  title?: string; // For document title
-}
-
-export const PageContainer: React.FC<PageContainerProps> = ({ 
-  children, 
-  className = '', 
-  maxWidth = 'xl',
-  title
-}) => {
+  title?: string;
+}> = ({ children, className = '', maxWidth = 'xl', title }) => {
   
-  // Update document title if provided
   useEffect(() => {
-    if (title) {
-      document.title = `${title} | UniPulse Kenya`;
-    }
+    if (title) document.title = `${title} | UniPulse Kenya`;
   }, [title]);
 
-  const widths = {
-    sm: "max-w-2xl",
-    md: "max-w-4xl",
-    lg: "max-w-6xl",
-    xl: "max-w-[1400px]", // Custom wider breakpoint for dashboards
-    full: "max-w-full",
-  };
+  const widths = { sm: "max-w-3xl", md: "max-w-5xl", lg: "max-w-7xl", xl: "max-w-[1536px]", full: "max-w-full" };
 
   return (
-    <div className={`w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 ${widths[maxWidth]} ${className}`}>
+    <div className={`w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 animate-in fade-in duration-300 ${widths[maxWidth]} ${className}`}>
       {children}
     </div>
   );

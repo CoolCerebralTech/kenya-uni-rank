@@ -1,37 +1,31 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
-interface XPBarProps {
+export const XPBar: React.FC<{
   currentXP: number;
   maxXP: number;
   level: number;
-}
-
-export const XPBar: React.FC<XPBarProps> = ({ currentXP, maxXP, level }) => {
+}> = ({ currentXP, maxXP, level }) => {
   const percentage = Math.min(100, (currentXP / maxXP) * 100);
 
   return (
     <div className="w-full">
-      <div className="flex justify-between items-end mb-1">
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded bg-cyan-500 text-slate-950 flex items-center justify-center text-xs font-bold">
+      <div className="flex justify-between items-center mb-1.5">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-cyan-500 text-slate-950 flex items-center justify-center text-xs font-bold shadow-[0_0_10px_rgba(34,211,238,0.3)]">
             {level}
           </div>
-          <span className="text-xs font-bold text-cyan-400 uppercase tracking-wide">
-            Level
-          </span>
+          <span className="text-sm font-bold text-cyan-400">Level</span>
         </div>
-        <span className="text-[10px] text-slate-500 font-mono">
-          {currentXP} / {maxXP} XP
-        </span>
+        <span className="text-xs text-slate-400 font-mono">{currentXP} / {maxXP} XP</span>
       </div>
-
-      <div className="relative h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-        <div 
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-600 to-blue-500 transition-all duration-700 ease-out"
-          style={{ width: `${percentage}%` }}
+      <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+        <motion.div
+          className="h-full bg-gradient-to-r from-cyan-500 to-blue-500"
+          initial={{ width: '0%' }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
         />
-        {/* Shine */}
-        <div className="absolute inset-0 bg-white/5 bg-[length:10px_10px] bg-stripes opacity-20" />
       </div>
     </div>
   );

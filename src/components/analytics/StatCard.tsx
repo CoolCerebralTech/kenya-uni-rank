@@ -2,35 +2,49 @@ import React from 'react';
 import { Card } from '../ui/Card';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
-interface StatCardProps {
+export const StatCard: React.FC<{
   label: string;
   value: string | number;
-  trend?: number; // percentage
+  trend?: number;
   icon?: React.ReactNode;
-  color?: string;
-}
+  color?: string; // e.g., 'text-cyan-400'
+}> = ({ label, value, trend, icon, color = 'text-cyan-400' }) => {
+  // ✅ FIXED: Safe trend handling with nullish coalescing
+  const trendValue = trend ?? 0;
+  const trendColor = trendValue > 0 ? 'text-emerald-400' : 
+                    trendValue < 0 ? 'text-red-400' : 'text-slate-400';
+  
+  // ✅ FIXED: Safe conditional icon selection
+  const TrendIcon = trendValue > 0 ? TrendingUp : 
+                   trendValue < 0 ? TrendingDown : Minus;
 
-export const StatCard: React.FC<StatCardProps> = ({ label, value, trend, icon, color = 'text-cyan-400' }) => {
   return (
-    <Card className="flex items-start justify-between p-5">
-      <div>
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-        <h3 className="text-2xl font-bold text-white mb-2">{value}</h3>
+    <Card variant="glass" className="p-5 relative overflow-hidden">
+      <div className={`absolute -right-4 -top-4 w-24 h-24 ${
+        color.replace('text-', 'bg-') + '/5 rounded-full blur-2xl'
+      }`} />
+      
+      <div className="relative z-10">
+        <div className="flex justify-between items-start">
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+            {label}
+          </p>
+          {icon && (
+            <div className={`p-2 rounded-lg bg-slate-800/50 ${color}`}>
+              {icon}
+            </div>
+          )}
+        </div>
+        
+        <h3 className="text-3xl font-bold text-white mt-2 mb-3">{value}</h3>
         
         {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-xs font-medium ${trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-slate-400'}`}>
-            {trend > 0 ? <TrendingUp size={12} /> : trend < 0 ? <TrendingDown size={12} /> : <Minus size={12} />}
-            <span>{Math.abs(trend)}%</span>
-            <span className="text-slate-500 ml-1">vs last month</span>
+          <div className={`flex items-center gap-1 text-xs font-medium ${trendColor}`}>
+            <TrendIcon size={14} />
+            <span>{Math.abs(trendValue)}% vs last month</span>
           </div>
         )}
       </div>
-
-      {icon && (
-        <div className={`p-3 rounded-xl bg-slate-800/50 border border-slate-700 ${color}`}>
-          {icon}
-        </div>
-      )}
     </Card>
   );
 };

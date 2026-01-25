@@ -575,7 +575,60 @@ export function formatSentimentScore(score: number): {
   }
   return { score, label: 'Poor', color: '#991b1b' };
 }
+/**
+ * Get aggregated sentiment stats for multiple universities.
+ * This is the missing function for the UniversityComparison component.
+ */
+export async function getUniversitySentimentStats(
+  universityIds: string[]
+): Promise<DatabaseResponse<{ [key: string]: { [key: string]: number } }>> {
+  try {
+    const currentMonth = getCurrentCycleMonth();
 
+    const { data, error } = await supabase
+      .from('poll_results')
+      .select('university_id, category, percentage')
+      .in('university_id', universityIds)
+      .eq('cycle_month', currentMonth);
+
+    if (error) {
+      console.error('[Insights] Error fetching sentiment stats:', error);
+      return { success: false, data: null, error: error.message };
+    }
+    if (!data) {
+      return { success: true, data: {}, error: null };
+    }
+
+    // Process the data into the required shape: { uniId: { category: avg_percentage, ... }, ... }
+    const result: { [key: string]: { [key: string]: { total: number, count: number } } } = {};
+
+    data.forEach(item => {
+      if (!result[item.university_id]) {
+        result[item.university_id] = {};
+      }
+      if (!result[item.university_id][item.category]) {
+        result[item.university_id][item.category] = { total: 0, count: 0 };
+      }
+      result[item.university_id][item.category].total += item.percentage;
+      result[item.university_id][item.category].count += 1;
+    });
+    
+    // Calculate averages
+    const finalStats: { [key: string]: { [key: string]: number } } = {};
+    for (const uniId in result) {
+      finalStats[uniId] = {};
+      for (const category in result[uniId]) {
+        const stats = result[uniId][category];
+        finalStats[uniId][category] = stats.total / stats.count;
+      }
+    }
+
+    return { success: true, data: finalStats, error: null };
+  } catch (err) {
+    console.error('[Insights] Unexpected error in getUniversitySentimentStats:', err);
+    return { success: false, data: null, error: 'Failed to process sentiment stats' };
+  }
+}
 // ============================================================================
 // EXPORT ALL
 // ============================================================================

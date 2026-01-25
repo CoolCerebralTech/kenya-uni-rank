@@ -1,23 +1,15 @@
 // ============================================================================
-// ADDITIONAL UTILITY HOOKS
+// ADDITIONAL UTILITY HOOKS (FIXED & MODERNIZED)
 // ============================================================================
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 
 // ============================================================================
 // useOnClickOutside - Detect clicks outside element
 // ============================================================================
 
-/**
- * Hook to detect clicks outside a ref element
- * Perfect for closing modals and dropdowns
- * 
- * @example
- * const ref = useRef<HTMLDivElement>(null);
- * useOnClickOutside(ref, () => setIsOpen(false));
- */
 export function useOnClickOutside<T extends HTMLElement = HTMLElement>(
-  ref: React.RefObject<T>,
+  ref: React.RefObject<T | null>, // Fixed type to allow null
   handler: (event: MouseEvent | TouchEvent) => void
 ): void {
   useEffect(() => {
@@ -42,15 +34,6 @@ export function useOnClickOutside<T extends HTMLElement = HTMLElement>(
 // useInterval - Declarative setInterval
 // ============================================================================
 
-/**
- * Hook for declarative setInterval
- * Automatically cleans up on unmount
- * 
- * @example
- * useInterval(() => {
- *   fetchLatestVotes();
- * }, 5000); // Refresh every 5 seconds
- */
 export function useInterval(callback: () => void, delay: number | null): void {
   const savedCallback = useRef(callback);
 
@@ -60,36 +43,36 @@ export function useInterval(callback: () => void, delay: number | null): void {
 
   useEffect(() => {
     if (delay === null) return;
-
     const id = setInterval(() => savedCallback.current(), delay);
     return () => clearInterval(id);
   }, [delay]);
 }
 
 // ============================================================================
-// useScrollPosition - Track scroll position
+// useScrollPosition - Track scroll position (Optimized with debounce)
 // ============================================================================
 
-/**
- * Hook to track window scroll position
- * 
- * @example
- * const { scrollY } = useScrollPosition();
- * const isScrolled = scrollY > 100;
- */
 export function useScrollPosition(): { scrollX: number; scrollY: number } {
   const [position, setPosition] = useState({ scrollX: 0, scrollY: 0 });
 
   useEffect(() => {
+    let ticking = false;
+
     const updatePosition = () => {
-      setPosition({
-        scrollX: window.scrollX,
-        scrollY: window.scrollY,
-      });
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setPosition({
+            scrollX: window.scrollX,
+            scrollY: window.scrollY,
+          });
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
     window.addEventListener('scroll', updatePosition, { passive: true });
-    updatePosition();
+    updatePosition(); // Initial check
 
     return () => window.removeEventListener('scroll', updatePosition);
   }, []);
@@ -101,18 +84,8 @@ export function useScrollPosition(): { scrollX: number; scrollY: number } {
 // useHover - Detect element hover state
 // ============================================================================
 
-/**
- * Hook to detect if element is hovered
- * 
- * @example
- * const [hoverRef, isHovered] = useHover<HTMLDivElement>();
- * 
- * <div ref={hoverRef}>
- *   {isHovered ? 'Hovering!' : 'Not hovering'}
- * </div>
- */
 export function useHover<T extends HTMLElement = HTMLElement>(): [
-  React.RefObject<T>,
+  React.RefObject<T | null>,
   boolean
 ] {
   const [isHovered, setIsHovered] = useState(false);
@@ -132,47 +105,30 @@ export function useHover<T extends HTMLElement = HTMLElement>(): [
       node.removeEventListener('mouseenter', handleMouseEnter);
       node.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, []);
+  }, []); // Ref never changes, so empty deps is fine
 
   return [ref, isHovered];
 }
 
 // ============================================================================
 // usePrevious - Get previous value of state
+// FIXED: React 19 safe (no reading refs during render)
 // ============================================================================
 
-/**
- * Hook to get previous value of a variable
- * Useful for comparing old vs new state
- * 
- * @example
- * const [count, setCount] = useState(0);
- * const prevCount = usePrevious(count);
- * 
- * console.log(`Changed from ${prevCount} to ${count}`);
- */
 export function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
+  const [tuple, setTuple] = useState<[T | undefined, T]>([undefined, value]);
 
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
+  if (tuple[1] !== value) {
+    setTuple([tuple[1], value]);
+  }
 
-  return ref.current;
+  return tuple[0];
 }
 
 // ============================================================================
 // useToggle - Boolean state toggle helper
 // ============================================================================
 
-/**
- * Hook for boolean toggle state
- * 
- * @example
- * const [isOpen, toggleOpen] = useToggle(false);
- * 
- * <button onClick={toggleOpen}>Toggle</button>
- */
 export function useToggle(
   initialValue = false
 ): [boolean, () => void, (value: boolean) => void] {
@@ -189,16 +145,6 @@ export function useToggle(
 // useAsync - Async operation state management
 // ============================================================================
 
-/**
- * Hook to manage async operations (loading, error, data)
- * 
- * @example
- * const { execute, loading, error, data } = useAsync(fetchPolls);
- * 
- * useEffect(() => {
- *   execute();
- * }, []);
- */
 export function useAsync<T>(
   asyncFunction: () => Promise<T>
 ): {
@@ -210,6 +156,12 @@ export function useAsync<T>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [data, setData] = useState<T | null>(null);
+  
+  // Safe state updates
+  const isMounted = useRef(true);
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
 
   const execute = useCallback(async () => {
     setLoading(true);
@@ -217,11 +169,11 @@ export function useAsync<T>(
 
     try {
       const result = await asyncFunction();
-      setData(result);
+      if (isMounted.current) setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Unknown error'));
+      if (isMounted.current) setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, [asyncFunction]);
 
@@ -232,30 +184,16 @@ export function useAsync<T>(
 // useKeyPress - Detect keyboard key press
 // ============================================================================
 
-/**
- * Hook to detect specific key press
- * 
- * @example
- * const enterPressed = useKeyPress('Enter');
- * 
- * if (enterPressed) {
- *   submitForm();
- * }
- */
 export function useKeyPress(targetKey: string): boolean {
   const [keyPressed, setKeyPressed] = useState(false);
 
   useEffect(() => {
     const downHandler = ({ key }: KeyboardEvent) => {
-      if (key === targetKey) {
-        setKeyPressed(true);
-      }
+      if (key === targetKey) setKeyPressed(true);
     };
 
     const upHandler = ({ key }: KeyboardEvent) => {
-      if (key === targetKey) {
-        setKeyPressed(false);
-      }
+      if (key === targetKey) setKeyPressed(false);
     };
 
     window.addEventListener('keydown', downHandler);
@@ -274,20 +212,6 @@ export function useKeyPress(targetKey: string): boolean {
 // useIsMounted - Check if component is mounted
 // ============================================================================
 
-/**
- * Hook to check if component is still mounted
- * Prevents state updates on unmounted components
- * 
- * @example
- * const isMounted = useIsMounted();
- * 
- * const fetchData = async () => {
- *   const data = await api.fetch();
- *   if (isMounted()) {
- *     setState(data);
- *   }
- * };
- */
 export function useIsMounted(): () => boolean {
   const isMounted = useRef(false);
 
@@ -305,16 +229,6 @@ export function useIsMounted(): () => boolean {
 // useCopyToClipboard - Copy text to clipboard
 // ============================================================================
 
-/**
- * Hook to copy text to clipboard
- * 
- * @example
- * const [copiedText, copy] = useCopyToClipboard();
- * 
- * <button onClick={() => copy('https://unipulse.ke/results')}>
- *   Copy Link
- * </button>
- */
 export function useCopyToClipboard(): [
   string | null,
   (text: string) => Promise<boolean>
@@ -344,35 +258,20 @@ export function useCopyToClipboard(): [
 
 // ============================================================================
 // useNetworkStatus - Online/offline detection
+// FIXED: Uses useSyncExternalStore for strict mode compatibility
 // ============================================================================
 
-/**
- * Hook to detect network status
- * 
- * @example
- * const isOnline = useNetworkStatus();
- * 
- * if (!isOnline) {
- *   return <OfflineMessage />;
- * }
- */
 export function useNetworkStatus(): boolean {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
+  return useSyncExternalStore(
+    (callback) => {
+      window.addEventListener('online', callback);
+      window.addEventListener('offline', callback);
+      return () => {
+        window.removeEventListener('online', callback);
+        window.removeEventListener('offline', callback);
+      };
+    },
+    () => (typeof navigator !== 'undefined' ? navigator.onLine : true),
+    () => true // Assume online during SSR
   );
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  return isOnline;
 }

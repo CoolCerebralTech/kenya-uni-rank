@@ -7,7 +7,7 @@ import { PageContainer } from '../components/layout/PageContainer';
 import { SectionDivider } from '../components/layout/SectionDivider';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Spinner } from '../components/ui/Spinner';
+import { Spinner } from '../components/ui/FullScreenLoader';
 import { Card } from '../components/ui/Card';
 
 // Visualization

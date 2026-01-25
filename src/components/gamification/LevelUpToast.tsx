@@ -1,65 +1,44 @@
 import React, { useEffect } from 'react';
 import { Trophy, ChevronRight, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-interface LevelUpToastProps {
+export const LevelUpToast: React.FC<{
   category: string;
-  xpGained: number;
-  nextCategory?: string;
   onDismiss: () => void;
   onNext?: () => void;
-}
-
-export const LevelUpToast: React.FC<LevelUpToastProps> = ({
-  category,
-  xpGained,
-  nextCategory,
-  onDismiss,
-  onNext
-}) => {
+}> = ({ category, onDismiss, onNext }) => {
   useEffect(() => {
-    // Sound effect trigger would go here
     const timer = setTimeout(onDismiss, 5000);
     return () => clearTimeout(timer);
   }, [onDismiss]);
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[70] w-full max-w-sm animate-in slide-in-from-top-10 fade-in duration-300">
-      <div className="relative bg-slate-900 border border-yellow-500/50 rounded-xl shadow-[0_0_30px_rgba(234,179,8,0.2)] p-4 overflow-hidden">
-        {/* Confetti Background */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-        
-        {/* Close Button */}
-        <button 
-          onClick={onDismiss}
-          className="absolute top-2 right-2 text-slate-500 hover:text-white z-20"
-        >
-          <X size={16} />
-        </button>
-
-        <div className="relative z-10 flex items-start gap-4">
-          <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500 text-yellow-500 animate-bounce">
+    <motion.div
+      layout
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -100, opacity: 0 }}
+      transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+      className="fixed top-5 left-1/2 -translate-x-1/2 z-[70] w-full max-w-sm"
+    >
+      <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-yellow-500/50 rounded-xl shadow-[0_0_30px_rgba(234,179,8,0.2)] p-4 overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-2xl" />
+        <button onClick={onDismiss} className="absolute top-2 right-2 text-slate-500 hover:text-white z-20"><X size={16} /></button>
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center border-2 border-yellow-500 text-yellow-500">
             <Trophy size={24} />
           </div>
-
-          <div className="flex-1">
-            <h4 className="font-bold text-white text-lg leading-tight mb-1">
-              {category} Conquered!
-            </h4>
-            <p className="text-yellow-400 text-sm font-bold mb-2">
-              +{xpGained} XP Earned
-            </p>
-            
-            {nextCategory && (
-              <button 
-                onClick={onNext}
-                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
-              >
-                Next: {nextCategory} <ChevronRight size={12} />
-              </button>
-            )}
+          <div>
+            <p className="text-sm font-bold text-yellow-400">CATEGORY CONQUERED</p>
+            <h4 className="font-bold text-white text-lg">{category}</h4>
           </div>
         </div>
+        {onNext && (
+          <button onClick={onNext} className="mt-3 w-full text-center py-2 bg-slate-800/50 hover:bg-slate-800 rounded-lg text-xs font-bold text-slate-300 transition-colors">
+            Continue Race <ChevronRight size={14} className="inline" />
+          </button>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 };

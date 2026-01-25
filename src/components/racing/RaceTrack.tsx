@@ -1,5 +1,5 @@
 import React from 'react';
-import { PollResult } from '../../types/models';
+import type { PollResult } from '../../types/models';
 import { UniversityRacer } from './UniversityRacer';
 import { GhostMode } from './GhostMode';
 import { Card } from '../ui/Card';

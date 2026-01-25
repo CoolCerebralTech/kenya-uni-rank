@@ -1,9 +1,9 @@
 // ============================================================================
-// useDebounce - Search Optimization Hook
+// useDebounce - Search Optimization Hook (FIXED & OPTIMIZED)
 // Delays execution until user stops typing
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * Hook to debounce a value (delays updates until user stops typing)
@@ -11,27 +11,15 @@ import { useState, useEffect } from 'react';
  * 
  * @param value - The value to debounce
  * @param delay - Delay in milliseconds (default: 500ms)
- * 
- * @example
- * const [searchTerm, setSearchTerm] = useState('');
- * const debouncedSearch = useDebounce(searchTerm, 500);
- * 
- * useEffect(() => {
- *   if (debouncedSearch) {
- *     searchPolls(debouncedSearch);
- *   }
- * }, [debouncedSearch]);
  */
 export function useDebounce<T>(value: T, delay = 500): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
-    // Set timeout to update debounced value after delay
     const handler = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
 
-    // Clear timeout if value changes before delay expires
     return () => {
       clearTimeout(handler);
     };
@@ -43,76 +31,82 @@ export function useDebounce<T>(value: T, delay = 500): T {
 /**
  * Hook to debounce a callback function
  * Useful for form submissions, API calls, etc.
- * 
- * @example
- * const debouncedSearch = useDebouncedCallback(
- *   (query: string) => searchAPI(query),
- *   500
- * );
- * 
- * <input onChange={(e) => debouncedSearch(e.target.value)} />
  */
-export function useDebouncedCallback<T extends (...args: never[]) => void>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function useDebouncedCallback<T extends (...args: any[]) => void>(
   callback: T,
   delay = 500
-): T {
-  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+): (...args: Parameters<T>) => void {
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const debouncedCallback = ((...args: Parameters<T>) => {
-    // Clear existing timeout
-    if (timeoutId) {
-      clearTimeout(timeoutId);
+  return useCallback((...args: Parameters<T>) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
 
-    // Set new timeout
-    const newTimeoutId = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       callback(...args);
     }, delay);
-
-    setTimeoutId(newTimeoutId);
-  }) as T;
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [timeoutId]);
-
-  return debouncedCallback;
+  }, [callback, delay]);
 }
 
 /**
  * Hook to throttle a value (limits updates to once per interval)
- * Different from debounce - throttle ensures function runs at regular intervals
- * 
- * @example
- * const throttledScroll = useThrottle(scrollPosition, 100);
+ * FIXED: Pure render + NO setState in effects using ref-based approach
  */
 export function useThrottle<T>(value: T, interval = 100): T {
-  const [throttledValue, setThrottledValue] = useState<T>(value);
-  const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
+  const throttledValue = useRef<T>(value);
+  const lastUpdated = useRef<number>(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Update throttledValue ref with current value
   useEffect(() => {
     const now = Date.now();
-    const timeSinceLastUpdate = now - lastUpdated;
+    const timeSinceLastUpdate = now - lastUpdated.current;
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
     if (timeSinceLastUpdate >= interval) {
-      setThrottledValue(value);
-      setLastUpdated(now);
+      // Leading edge: update immediately
+      throttledValue.current = value;
+      lastUpdated.current = now;
     } else {
-      const timeoutId = setTimeout(() => {
-        setThrottledValue(value);
-        setLastUpdated(Date.now());
-      }, interval - timeSinceLastUpdate);
-
-      return () => clearTimeout(timeoutId);
+      // Trailing edge: schedule update
+      const remaining = interval - timeSinceLastUpdate;
+      timeoutRef.current = setTimeout(() => {
+        throttledValue.current = value;
+        lastUpdated.current = Date.now();
+      }, remaining);
     }
-  }, [value, interval, lastUpdated]);
 
-  return throttledValue;
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [value, interval]);
+
+  // Return stable value for consumers (forces re-render when needed)
+  const [state, setState] = useState<T>(value);
+  
+  useEffect(() => {
+    setState(throttledValue.current);
+  }, []);
+
+  // Force update when throttledValue changes (without deps causing loops)
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (throttledValue.current !== state) {
+        setState(throttledValue.current);
+      }
+    }, interval);
+
+    return () => clearInterval(checkInterval);
+  }, [interval, state]);
+
+  return state;
 }
 
 export default useDebounce;

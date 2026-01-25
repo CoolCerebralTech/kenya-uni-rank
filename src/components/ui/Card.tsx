@@ -15,27 +15,28 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       default: "bg-slate-900 border border-slate-800/60",
       elevated: "bg-slate-900 shadow-xl shadow-black/50 border border-slate-800",
       outlined: "bg-transparent border border-slate-700",
-      glass: "bg-slate-900/60 backdrop-blur-md border border-white/5",
+      glass: "bg-slate-900/60 backdrop-blur-md border border-white/10",
     };
 
     const paddings = {
       none: "p-0",
-      sm: "p-3",
-      md: "p-5",
+      sm: "p-4",
+      md: "p-6",
       lg: "p-8",
     };
 
+    // UPGRADE: Enhanced hover effect with a glowing gradient border
     const hoverClasses = hoverEffect 
-      ? "hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1 cursor-pointer" 
+      ? "hover:-translate-y-1 relative before:absolute before:inset-0 before:p-px before:rounded-xl before:bg-gradient-to-b before:from-indigo-500 before:to-blue-600 before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300" 
       : "";
 
     return (
       <div
         ref={ref}
-        className={`${baseStyles} ${variants[variant]} ${paddings[padding]} ${hoverClasses} ${className}`}
+        className={`group ${baseStyles} ${variants[variant]} ${paddings[padding]} ${hoverClasses} ${className}`}
         {...props}
       >
-        {children}
+        <div className="relative z-10">{children}</div>
       </div>
     );
   }

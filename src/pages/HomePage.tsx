@@ -1,3 +1,4 @@
+// src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,6 +8,8 @@ import { PageContainer } from '../components/layout/PageContainer';
 import { SectionDivider } from '../components/layout/SectionDivider';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { RacingSkeleton } from '../components/ui/RacingSkeleton';
+import { Card } from '../components/ui/Card';
 
 // Feature Components
 import { HeroRacePreview } from '../components/racing/HeroRacePreview';
@@ -21,67 +24,101 @@ import { AIPreviewCard } from '../components/ai/AIPreviewCard';
 import { AIMatchTeaser } from '../components/ai/AIMatchTeaser';
 
 // Services & Types
-import { getPlatformStats, getHottestPoll } from '../services/analytics.service';
-import type { PollCategory, Poll } from '../types/models';
+import { 
+  getPlatformStats, 
+  getMostCompetitiveCategories,
+  getTopThreeUniversities,
+  formatNumber
+} from '../services/analytics.service';
+import type { PollCategory } from '../types/models';
 import { Activity, Users, Vote, Zap } from 'lucide-react';
+
+// Hooks
+import { useVotingFlow } from '../hooks/useVotingFlow';
+import { useRealtime } from '../hooks/useRealtime';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   
   // State
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
-  const [stats, setStats] = useState({ votes: 0, polls: 0, unis: 0 });
-  const [featuredPoll, setFeaturedPoll] = useState<Poll | undefined>(undefined);
-  const [, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({ 
+    votes: 0, 
+    polls: 0, 
+    unis: 0,
+    totalVotes: 0,
+    totalUniversities: 0,
+    totalPolls: 0 
+  });
+  const [mostCompetitiveCategory, setMostCompetitiveCategory] = useState<string>('Vibes');
+  const [topUniversity, setTopUniversity] = useState<string>('Strathmore');
+  const [competitiveStats, setCompetitiveStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
 
-  // Mock user progress (In real app, fetch from local storage or auth)
-  const userProgress = {
-    completed: 2,
-    total: 6,
-    xp: 450
-  };
+  // Hooks
+  const votingFlow = useVotingFlow();
+  const userProgress = votingFlow.getProgress();
+
+  // Real-time subscription for platform activity
+  const { isConnected } = useRealtime({
+    pollId: 'platform',
+    enabled: true,
+    onVoteReceived: () => {
+      // Refresh platform stats when new votes come in
+      loadPlatformStats();
+    }
+  });
 
   // Data Fetching
+  const loadPlatformStats = async () => {
+    try {
+      setIsStatsLoading(true);
+      const [statsRes, competitiveRes, rankingsRes] = await Promise.all([
+        getPlatformStats(),
+        getMostCompetitiveCategories(1),
+        getTopThreeUniversities()
+      ]);
+
+      if (statsRes.success && statsRes.data) {
+        setStats({
+          votes: statsRes.data.totalVotes,
+          polls: statsRes.data.totalPolls,
+          unis: statsRes.data.totalUniversities,
+          totalVotes: statsRes.data.totalVotes,
+          totalUniversities: statsRes.data.totalUniversities,
+          totalPolls: statsRes.data.totalPolls
+        });
+      }
+
+      if (competitiveRes.success && competitiveRes.data && competitiveRes.data.length > 0) {
+        const category = competitiveRes.data[0];
+        setMostCompetitiveCategory(category.category);
+        setCompetitiveStats(category);
+      }
+
+      if (rankingsRes.success && rankingsRes.data && rankingsRes.data.length > 0) {
+        setTopUniversity(rankingsRes.data[0].name);
+      }
+    } catch (error) {
+      console.error('Failed to load platform stats', error);
+    } finally {
+      setIsStatsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const loadDashboardData = async () => {
-      try {
-        const [statsRes, pollRes] = await Promise.all([
-          getPlatformStats(),
-          getHottestPoll()
-        ]);
-
-        if (statsRes.success && statsRes.data) {
-          setStats({
-            votes: statsRes.data.totalVotes,
-            polls: statsRes.data.totalPolls,
-            unis: statsRes.data.totalUniversities
-          });
-        }
-
-        if (pollRes.success && pollRes.data) {
-          // Convert trending poll to Poll model structure if needed, or use as is
-          // Here we assume simple mapping for the display component
-          setFeaturedPoll({
-            id: pollRes.data.id,
-            question: pollRes.data.question,
-            category: pollRes.data.category as PollCategory,
-            slug: pollRes.data.slug,
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            startsAt: null,
-            endsAt: null,
-            cycleMonth: '2026-01'
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load dashboard data', error);
-      } finally {
-        setIsLoading(false);
-      }
+      setIsLoading(true);
+      await loadPlatformStats();
+      setIsLoading(false);
     };
 
     loadDashboardData();
+
+    // Set up periodic refresh every 30 seconds
+    const interval = setInterval(loadPlatformStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Handlers
@@ -90,12 +127,20 @@ export const HomePage: React.FC = () => {
   };
 
   const handleVoteNow = () => {
-    if (featuredPoll) {
-      navigate(`/poll/${featuredPoll.slug}`);
-    } else {
-      navigate('/polls');
-    }
+    navigate('/polls');
   };
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <PageContainer maxWidth="xl" title="Home">
+          <div className="space-y-8">
+            <RacingSkeleton count={5} />
+          </div>
+        </PageContainer>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -107,7 +152,12 @@ export const HomePage: React.FC = () => {
           {/* Left: Copy & CTA */}
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-900/30 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-wider animate-in fade-in slide-in-from-left-4 duration-500">
-              <Zap size={14} className="fill-current" /> Phase 2 Live Cycle: Jan 2026
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span>{isConnected ? 'Live' : 'Connecting...'}</span>
+              </div>
+              <span>•</span>
+              <span>Phase 2 Live Cycle: Jan 2026</span>
             </div>
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
@@ -133,7 +183,7 @@ export const HomePage: React.FC = () => {
             {/* Quick Stats Row */}
             <div className="flex items-center gap-6 pt-6 border-t border-slate-800/50 animate-in fade-in delay-500">
               <div className="text-center sm:text-left">
-                <div className="text-2xl font-bold text-white">{stats.votes.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-white">{formatNumber(stats.votes)}</div>
                 <div className="text-xs text-slate-500 uppercase tracking-wide">Votes Cast</div>
               </div>
               <div className="w-px h-8 bg-slate-800" />
@@ -143,7 +193,7 @@ export const HomePage: React.FC = () => {
               </div>
               <div className="w-px h-8 bg-slate-800" />
               <div className="text-center sm:text-left">
-                <div className="text-2xl font-bold text-green-400">Live</div>
+                <div className="text-2xl font-bold text-emerald-400 animate-pulse">Live</div>
                 <div className="text-xs text-slate-500 uppercase tracking-wide">System Status</div>
               </div>
             </div>
@@ -157,16 +207,16 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* --- USER PROGRESS BAR (Sticky-ish) --- */}
+        {/* --- USER PROGRESS BAR (Real Voting Progress) --- */}
         <div className="mb-12 bg-slate-900/50 border border-slate-800 rounded-2xl p-4 md:p-6 backdrop-blur-sm flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <ProgressRing 
-              progress={(userProgress.completed / userProgress.total) * 100} 
+              progress={userProgress.percentage} 
               radius={32} 
               stroke={5}
               color="#22d3ee"
             >
-              <span className="text-xs font-bold text-cyan-400">{Math.round((userProgress.completed / userProgress.total) * 100)}%</span>
+              <span className="text-xs font-bold text-cyan-400">{userProgress.percentage}%</span>
             </ProgressRing>
             <div>
               <h3 className="font-bold text-white">Your Voice Matters</h3>
@@ -175,8 +225,13 @@ export const HomePage: React.FC = () => {
               </p>
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => navigate('/profile')}>
-            Continue Voting
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => navigate('/polls')}
+            disabled={userProgress.completed >= userProgress.total}
+          >
+            {userProgress.completed >= userProgress.total ? 'All Categories Complete' : 'Continue Voting'}
           </Button>
         </div>
 
@@ -187,7 +242,7 @@ export const HomePage: React.FC = () => {
           <CategorySelector onSelect={handleCategorySelect} />
         </div>
 
-        {/* --- LIVE GRID (Activity + Poll of Day) --- */}
+        {/* --- LIVE GRID (Activity + Poll of Day + Stats) --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-16">
           
           {/* Left Column: Poll of the Day */}
@@ -195,7 +250,7 @@ export const HomePage: React.FC = () => {
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Vote className="text-orange-500" size={20} /> Featured Battle
             </h3>
-            <PollOfTheDay poll={featuredPoll} onVote={handleVoteNow} />
+            <PollOfTheDay onVote={handleVoteNow} />
           </div>
 
           {/* Middle: Live Feed */}
@@ -213,28 +268,82 @@ export const HomePage: React.FC = () => {
             </h3>
             
             <div className="flex-1 grid grid-cols-1 gap-4">
-              <StatCard 
-                label="Most Competitive" 
-                value="Vibes" 
-                trend={12} 
-                icon={<Zap size={20} />} 
-              />
-              <StatCard 
-                label="Top University" 
-                value="Strathmore" 
-                trend={5} 
-                icon={<Vote size={20} />} 
-                color="text-indigo-400"
-              />
+              {isStatsLoading ? (
+                <>
+                  <Card className="p-4">
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-4 bg-slate-700 rounded w-3/4"></div>
+                      <div className="h-8 bg-slate-700 rounded"></div>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-4 bg-slate-700 rounded w-3/4"></div>
+                      <div className="h-8 bg-slate-700 rounded"></div>
+                    </div>
+                  </Card>
+                </>
+              ) : (
+                <>
+                  <StatCard 
+                    label="Most Competitive" 
+                    value={mostCompetitiveCategory.charAt(0).toUpperCase() + mostCompetitiveCategory.slice(1)} 
+                    icon={<Zap size={20} />}
+                    trend={competitiveStats?.competitionLevel === 'high' ? 12 : competitiveStats?.competitionLevel === 'medium' ? 5 : 0}
+                  />
+                  <StatCard 
+                    label="Top University" 
+                    value={topUniversity} 
+                    icon={<Vote size={20} />} 
+                    color="text-indigo-400"
+                    trend={8}
+                  />
+                </>
+              )}
+              
               <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-slate-500 font-bold uppercase mb-1">Current Cycle</div>
                   <div className="text-white font-mono">Closing in 14 days</div>
                 </div>
-                <Badge variant="warning">Active</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="success" className="animate-pulse">
+                    <span className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      Active
+                    </span>
+                  </Badge>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* --- PLATFORM STATS ROW --- */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+          <Card className="p-5 text-center">
+            <div className="text-3xl font-bold text-white mb-2">{formatNumber(stats.totalVotes)}</div>
+            <div className="text-sm text-slate-400 uppercase tracking-wider">Total Votes</div>
+            <div className="text-xs text-slate-600 mt-1">Across all polls</div>
+          </Card>
+          
+          <Card className="p-5 text-center">
+            <div className="text-3xl font-bold text-white mb-2">{stats.totalUniversities}</div>
+            <div className="text-sm text-slate-400 uppercase tracking-wider">Universities</div>
+            <div className="text-xs text-slate-600 mt-1">Public & Private</div>
+          </Card>
+          
+          <Card className="p-5 text-center">
+            <div className="text-3xl font-bold text-white mb-2">{stats.totalPolls}</div>
+            <div className="text-sm text-slate-400 uppercase tracking-wider">Active Polls</div>
+            <div className="text-xs text-slate-600 mt-1">In current cycle</div>
+          </Card>
+          
+          <Card className="p-5 text-center">
+            <div className="text-3xl font-bold text-white mb-2">6</div>
+            <div className="text-sm text-slate-400 uppercase tracking-wider">Categories</div>
+            <div className="text-xs text-slate-600 mt-1">Vibes, Academics, etc.</div>
+          </Card>
         </div>
 
         {/* --- AI TEASER SECTION --- */}
@@ -244,6 +353,19 @@ export const HomePage: React.FC = () => {
 
         {/* Modal for AI */}
         <AIMatchTeaser isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} />
+
+        {/* --- DISCLAIMER SECTION --- */}
+        <div className="mt-12 pt-8 border-t border-slate-800/50 text-center">
+          <p className="text-sm text-slate-500">
+            <strong>Disclaimer:</strong> UniPulse rankings are based on real-time student and alumni votes. 
+            This is a decision-aid system showing community sentiment, not official university rankings.
+          </p>
+          <p className="text-xs text-slate-600 mt-2">
+            System Status: <span className={`font-bold ${isConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {isConnected ? 'All Systems Operational' : 'Connecting to Live Feed...'}
+            </span>
+          </p>
+        </div>
 
       </PageContainer>
     </AppLayout>

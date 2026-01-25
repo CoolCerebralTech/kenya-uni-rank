@@ -1,9 +1,9 @@
 // ============================================================================
-// useRealtime - Live Vote Subscriptions
+// useRealtime - Live Vote Subscriptions (FIXED)
 // Manages Supabase realtime subscriptions for live updates
 // ============================================================================
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { subscribeToPollVotes } from '../services/database.service';
 import { invalidatePollResultsCache } from '../services/storage.service';
 
@@ -22,14 +22,6 @@ interface UseRealtimeResult {
 
 /**
  * Hook to subscribe to real-time vote updates for a poll
- * Automatically invalidates cache and triggers refresh
- * 
- * @example
- * const { isConnected, voteCount } = useRealtime({
- *   pollId: poll.id,
- *   enabled: hasVoted,
- *   onVoteReceived: () => refreshResults(),
- * });
  */
 export function useRealtime({
   pollId,
@@ -41,46 +33,63 @@ export function useRealtime({
   const [voteCount, setVoteCount] = useState(0);
   const [error, setError] = useState<Error | null>(null);
 
-  const handleVoteReceived = useCallback(() => {
-    console.log('[useRealtime] New vote received for poll:', pollId);
-    
-    // Update state
-    setLastVoteTime(new Date());
-    setVoteCount(prev => prev + 1);
-    
-    // Invalidate cache
-    invalidatePollResultsCache(pollId);
-    
-    // Trigger callback
-    onVoteReceived?.();
-  }, [pollId, onVoteReceived]);
+  // Stable callback ref to prevent effect re-runs
+  const callbackRef = useRef(onVoteReceived);
+  useEffect(() => {
+    callbackRef.current = onVoteReceived;
+  }, [onVoteReceived]);
 
   useEffect(() => {
+    // 1. If disabled/invalid, do nothing. 
+    // The cleanup function from the previous run has already set isConnected(false),
+    // or the default state is false. No need to call setState here.
     if (!enabled || !pollId) {
-      console.log('[useRealtime] Subscription disabled or no pollId');
       return;
     }
 
-    console.log('[useRealtime] Subscribing to poll:', pollId);
-    setIsConnected(true);
+    let active = true;
+    let unsubscribe: (() => void) | null = null;
 
-    try {
-      // Subscribe to vote updates
-      const unsubscribe = subscribeToPollVotes(pollId, handleVoteReceived);
+    const setupSubscription = () => {
+      try {
+        console.log('[useRealtime] Subscribing to poll:', pollId);
+        
+        const handler = () => {
+          if (!active) return;
+          console.log('[useRealtime] New vote received for poll:', pollId);
+          
+          setLastVoteTime(new Date());
+          setVoteCount((prev) => prev + 1);
+          invalidatePollResultsCache(pollId);
+          callbackRef.current?.();
+        };
 
-      // Cleanup
-      return () => {
-        console.log('[useRealtime] Unsubscribing from poll:', pollId);
-        setIsConnected(false);
+        unsubscribe = subscribeToPollVotes(pollId, handler);
+        
+        if (active) {
+          setIsConnected(true);
+          setError(null);
+        }
+      } catch (err) {
+        if (active) {
+          console.error('[useRealtime] Subscription error:', err);
+          setError(err instanceof Error ? err : new Error('Subscription failed'));
+          setIsConnected(false);
+        }
+      }
+    };
+
+    setupSubscription();
+
+    // Cleanup: This handles resetting state when pollId changes or component unmounts
+    return () => {
+      active = false;
+      if (unsubscribe) {
         unsubscribe();
-      };
-    } catch (err) {
-      const errorObj = err instanceof Error ? err : new Error('Subscription failed');
-      console.error('[useRealtime] Subscription error:', err);
-      setError(errorObj);
+      }
       setIsConnected(false);
-    }
-  }, [pollId, enabled, handleVoteReceived]);
+    };
+  }, [pollId, enabled]);
 
   return {
     isConnected,
@@ -92,13 +101,15 @@ export function useRealtime({
 
 /**
  * Hook to subscribe to multiple polls at once
- * Useful for results pages showing many polls
  */
 export function useMultipleRealtime(
   pollIds: string[],
   enabled = true
 ): Record<string, UseRealtimeResult> {
   const [results, setResults] = useState<Record<string, UseRealtimeResult>>({});
+  
+  // Serialize dependencies to prevent loops
+  const serializedPollIds = useMemo(() => pollIds.sort().join(','), [pollIds]);
 
   useEffect(() => {
     if (!enabled || pollIds.length === 0) return;
@@ -106,24 +117,29 @@ export function useMultipleRealtime(
     const unsubscribers: (() => void)[] = [];
 
     pollIds.forEach((pollId) => {
-      const unsubscribe = subscribeToPollVotes(pollId, () => {
-        setResults(prev => ({
-          ...prev,
-          [pollId]: {
-            ...prev[pollId],
-            lastVoteTime: new Date(),
-            voteCount: (prev[pollId]?.voteCount || 0) + 1,
-          },
-        }));
-      });
-
-      unsubscribers.push(unsubscribe);
+      try {
+        const unsubscribe = subscribeToPollVotes(pollId, () => {
+          setResults(prev => ({
+            ...prev,
+            [pollId]: {
+              isConnected: true,
+              lastVoteTime: new Date(),
+              voteCount: (prev[pollId]?.voteCount || 0) + 1,
+              error: null
+            },
+          }));
+        });
+        unsubscribers.push(unsubscribe);
+      } catch (err) {
+        console.error(`[useMultipleRealtime] Error subscribing to ${pollId}:`, err);
+      }
     });
 
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [pollIds, enabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serializedPollIds, enabled]);
 
   return results;
 }

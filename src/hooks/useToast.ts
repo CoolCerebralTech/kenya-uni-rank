@@ -1,9 +1,9 @@
 // ============================================================================
-// useToast - Toast Notification Manager
-// Global toast system for success/error/info messages
+// useToast - Toast Notification Manager (FIXED & MODERNIZED)
+// Global toast system using useSyncExternalStore (React 18+)
 // ============================================================================
 
-import { useState, useCallback, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -26,145 +26,107 @@ interface ToastContextValue {
   clearAllToasts: () => void;
 }
 
-// Global toast state (shared across all components)
-let toastListeners: ((toasts: Toast[]) => void)[] = [];
-let toastsState: Toast[] = [];
+// --- GLOBAL STATE ENGINE ---
 
-const notifyListeners = () => {
-  toastListeners.forEach(listener => listener(toastsState));
+let toastsState: Toast[] = [];
+const listeners = new Set<() => void>();
+
+const emitChange = () => {
+  listeners.forEach(listener => listener());
 };
 
+// 1. Core Remove Function
+const dispatchRemoveToast = (id: string) => {
+  toastsState = toastsState.filter(t => t.id !== id);
+  emitChange();
+};
+
+// 2. Core Add Function
+const dispatchAddToast = (toast: Omit<Toast, 'id'>): string => {
+  const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const duration = toast.duration ?? 5000;
+
+  const newToast: Toast = {
+    ...toast,
+    id,
+    duration,
+  };
+
+  toastsState = [...toastsState, newToast];
+  emitChange();
+
+  // Auto-dismiss logic
+  if (duration > 0) {
+    setTimeout(() => {
+      dispatchRemoveToast(id);
+    }, duration);
+  }
+
+  return id;
+};
+
+// 3. Core Clear Function
+const dispatchClearAll = () => {
+  toastsState = [];
+  emitChange();
+};
+
+// --- REACT HOOK ---
+
 /**
- * Hook to manage toast notifications
- * Use this in any component to show toasts
- * 
- * @example
- * const { showToast } = useToast();
- * 
- * showToast({
- *   type: 'success',
- *   message: 'Vote submitted successfully!',
- *   duration: 3000,
- * });
+ * Hook to consume toast notifications
+ * Uses useSyncExternalStore to subscribe to global state without useEffect errors
  */
 export function useToast(): ToastContextValue {
-  const [toasts, setToasts] = useState<Toast[]>(toastsState);
-
-  useEffect(() => {
-    const listener = (newToasts: Toast[]) => {
-      setToasts(newToasts);
-    };
-
-    toastListeners.push(listener);
-
-    return () => {
-      toastListeners = toastListeners.filter(l => l !== listener);
-    };
-  }, []);
-
-  const showToast = useCallback((toast: Omit<Toast, 'id'>): string => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const duration = toast.duration || 5000;
-
-    const newToast: Toast = {
-      ...toast,
-      id,
-      duration,
-    };
-
-    toastsState = [...toastsState, newToast];
-    notifyListeners();
-
-    // Auto-dismiss after duration
-    if (duration > 0) {
-      setTimeout(() => {
-        hideToast(id);
-      }, duration);
-    }
-
-    return id;
-  }, []);
-
-  const hideToast = useCallback((id: string) => {
-    toastsState = toastsState.filter(t => t.id !== id);
-    notifyListeners();
-  }, []);
-
-  const clearAllToasts = useCallback(() => {
-    toastsState = [];
-    notifyListeners();
-  }, []);
+  const toasts = useSyncExternalStore(
+    // 1. Subscribe method
+    (callback) => {
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    },
+    // 2. Get client snapshot
+    () => toastsState,
+    // 3. Get server snapshot (empty for SSR safety)
+    () => []
+  );
 
   return {
     toasts,
-    showToast,
-    hideToast,
-    clearAllToasts,
+    showToast: dispatchAddToast,
+    hideToast: dispatchRemoveToast,
+    clearAllToasts: dispatchClearAll,
   };
 }
+
+// --- UTILITIES ---
 
 /**
  * Convenience functions for common toast types
  */
 export const toast = {
   success: (message: string, title?: string, duration = 3000) => {
-    const { showToast } = useToast();
-    return showToast({ type: 'success', message, title, duration });
+    return dispatchAddToast({ type: 'success', message, title, duration });
   },
 
   error: (message: string, title?: string, duration = 5000) => {
-    const { showToast } = useToast();
-    return showToast({ type: 'error', message, title, duration });
+    return dispatchAddToast({ type: 'error', message, title, duration });
   },
 
   warning: (message: string, title?: string, duration = 4000) => {
-    const { showToast } = useToast();
-    return showToast({ type: 'warning', message, title, duration });
+    return dispatchAddToast({ type: 'warning', message, title, duration });
   },
 
   info: (message: string, title?: string, duration = 3000) => {
-    const { showToast } = useToast();
-    return showToast({ type: 'info', message, title, duration });
+    return dispatchAddToast({ type: 'info', message, title, duration });
   },
 };
 
-/**
- * Shorthand toast functions (use outside React components)
- */
 export const showSuccessToast = (message: string) => {
-  const id = `toast-${Date.now()}`;
-  const newToast: Toast = {
-    id,
-    type: 'success',
-    message,
-    duration: 3000,
-  };
-
-  toastsState = [...toastsState, newToast];
-  notifyListeners();
-
-  setTimeout(() => {
-    toastsState = toastsState.filter(t => t.id !== id);
-    notifyListeners();
-  }, 3000);
+  toast.success(message);
 };
 
 export const showErrorToast = (message: string) => {
-  const id = `toast-${Date.now()}`;
-  const newToast: Toast = {
-    id,
-    type: 'error',
-    message,
-    duration: 5000,
-  };
-
-  toastsState = [...toastsState, newToast];
-  notifyListeners();
-
-  setTimeout(() => {
-    toastsState = toastsState.filter(t => t.id !== id);
-    notifyListeners();
-  }, 5000);
+  toast.error(message);
 };
 
 export default useToast;

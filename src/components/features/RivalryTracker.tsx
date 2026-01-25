@@ -2,6 +2,7 @@ import React from 'react';
 import { Card } from '../ui/Card';
 import { Swords } from 'lucide-react';
 import type { University } from '../../types/models';
+import { motion } from 'framer-motion';
 
 interface RivalryProps {
   uni1: University;
@@ -12,47 +13,48 @@ interface RivalryProps {
 }
 
 export const RivalryTracker: React.FC<RivalryProps> = ({ uni1, uni2, score1, score2, category }) => {
-  const total = score1 + score2;
+  const total = score1 + score2 || 1;
   const p1 = (score1 / total) * 100;
   const p2 = (score2 / total) * 100;
 
   return (
-    <Card className="border-t-4 border-t-red-500">
+    <Card className="p-5 border-t-4 border-t-red-600 bg-slate-900/50">
       <div className="flex items-center justify-center gap-2 mb-4 text-xs font-bold text-red-500 uppercase tracking-widest">
         <Swords size={16} /> Rivalry Watch
       </div>
+      <p className="text-center text-sm text-slate-400 mb-4">
+        Battle for <span className="font-bold text-white">{category}</span> Supremacy
+      </p>
 
-      <div className="flex justify-between items-end mb-2">
+      <div className="relative flex justify-between items-center mb-2">
         <div className="text-left">
-          <div className="text-2xl font-black text-white" style={{ color: uni1.color }}>{uni1.shortName}</div>
-          <div className="text-xs text-slate-500">Wins</div>
+          <p className="text-xl font-black text-white" style={{ color: uni1.color }}>{uni1.shortName}</p>
+          <p className="text-3xl font-bold text-white">{score1}</p>
         </div>
-        <div className="text-center pb-2">
-          <span className="text-[10px] text-slate-600 uppercase font-bold bg-slate-900 px-2 py-1 rounded border border-slate-800">
-            {category}
-          </span>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-12 w-12 flex items-center justify-center bg-slate-950 rounded-full border-2 border-slate-700">
+          <p className="font-black text-lg text-slate-500">VS</p>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-black text-white" style={{ color: uni2.color }}>{uni2.shortName}</div>
-          <div className="text-xs text-slate-500">Wins</div>
+          <p className="text-xl font-black text-white" style={{ color: uni2.color }}>{uni2.shortName}</p>
+          <p className="text-3xl font-bold text-white">{score2}</p>
         </div>
       </div>
 
-      {/* Battle Bar */}
-      <div className="h-6 w-full flex rounded-md overflow-hidden bg-slate-800">
-        <div 
-          className="h-full flex items-center justify-start pl-2 text-[10px] font-bold text-white/90"
-          style={{ width: `${p1}%`, backgroundColor: uni1.color }}
-        >
-          {score1}
-        </div>
-        <div className="w-1 bg-slate-950 transform skew-x-[-20deg] scale-110 z-10" />
-        <div 
-          className="h-full flex items-center justify-end pr-2 text-[10px] font-bold text-white/90"
-          style={{ width: `${p2}%`, backgroundColor: uni2.color }}
-        >
-          {score2}
-        </div>
+      <div className="h-4 w-full flex rounded-full overflow-hidden bg-slate-800 border border-slate-700">
+        <motion.div
+          className="h-full"
+          style={{ backgroundColor: uni1.color }}
+          initial={{ width: '50%' }}
+          animate={{ width: `${p1}%` }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
+        <motion.div
+          className="h-full"
+          style={{ backgroundColor: uni2.color }}
+          initial={{ width: '50%' }}
+          animate={{ width: `${p2}%` }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
       </div>
     </Card>
   );

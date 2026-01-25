@@ -1,19 +1,18 @@
 import React from 'react';
-import { Button } from '../ui/Button'; // Assuming we wrap the UI button
+// UPGRADE: Import the Button and its props type
+import { Button, type ButtonProps } from '../ui/Button';
 
-interface HapticButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+// UPGRADE: Extend ButtonProps to inherit all its properties (variant, size, etc.)
+// and add our new 'pattern' prop.
+interface HapticButtonProps extends ButtonProps {
   pattern?: 'success' | 'warning' | 'error' | 'light' | 'medium' | 'heavy';
-  children: React.ReactNode;
-  variant?: unknown; // Pass through to Button
-  size?: unknown; // Pass through to Button
-  className?: string;
 }
 
 export const HapticButton: React.FC<HapticButtonProps> = ({ 
   pattern = 'light', 
   onClick, 
   children, 
-  ...props 
+  ...props // `...props` now safely contains correctly typed `variant`, `size`, etc.
 }) => {
   
   const triggerHaptic = () => {
@@ -34,6 +33,7 @@ export const HapticButton: React.FC<HapticButtonProps> = ({
     if (onClick) onClick(e);
   };
 
+  // The props are now passed through with perfect type safety.
   return (
     <Button onClick={handleClick} {...props}>
       {children}

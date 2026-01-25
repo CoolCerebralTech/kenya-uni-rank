@@ -1,71 +1,55 @@
 // ============================================================================
-// useMediaQuery - Responsive Helper Hook
+// useMediaQuery - Responsive Helper Hook (FIXED & MODERNIZED)
 // Detects screen size and device type for responsive UI
+// Uses useSyncExternalStore for React 18+ performance & SSR safety
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore, useCallback } from 'react';
 
 /**
  * Hook to detect if a media query matches
  * Returns true/false based on current screen size
  * 
  * @param query - CSS media query string
- * 
- * @example
- * const isMobile = useMediaQuery('(max-width: 768px)');
- * const isDark = useMediaQuery('(prefers-color-scheme: dark)');
- * 
- * if (isMobile) {
- *   return <MobileNav />;
- * }
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState<boolean>(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
+  // 1. Define how to subscribe to external changes
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      const matchMedia = window.matchMedia(query);
+      
+      // Modern browsers
+      if (matchMedia.addEventListener) {
+        matchMedia.addEventListener('change', callback);
+        return () => matchMedia.removeEventListener('change', callback);
+      }
+      // Legacy fallback
+      else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (matchMedia as any).addListener(callback);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return () => (matchMedia as any).removeListener(callback);
+      }
+    },
+    [query]
+  );
+
+  // 2. Get current value on client
+  const getSnapshot = () => {
     return window.matchMedia(query).matches;
-  });
+  };
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
+  // 3. Get server-side value (hydration safe)
+  const getServerSnapshot = () => {
+    return false;
+  };
 
-    const mediaQuery = window.matchMedia(query);
-    
-    // Set initial value
-    setMatches(mediaQuery.matches);
-
-    // Update on change
-    const handler = (event: MediaQueryListEvent) => {
-      setMatches(event.matches);
-    };
-
-    // Modern browsers
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handler);
-      return () => mediaQuery.removeEventListener('change', handler);
-    } 
-    // Legacy browsers
-    else {
-      mediaQuery.addListener(handler);
-      return () => mediaQuery.removeListener(handler);
-    }
-  }, [query]);
-
-  return matches;
+  // useSyncExternalStore handles the React lifecycle perfectly without useEffect errors
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 /**
  * Hook to get current breakpoint (mobile, tablet, desktop)
- * 
- * @example
- * const breakpoint = useBreakpoint();
- * 
- * if (breakpoint === 'mobile') {
- *   return <MobileLayout />;
- * }
  */
 export function useBreakpoint(): 'mobile' | 'tablet' | 'desktop' | 'wide' {
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -83,9 +67,6 @@ export function useBreakpoint(): 'mobile' | 'tablet' | 'desktop' | 'wide' {
 
 /**
  * Hook to detect if user prefers dark mode
- * 
- * @example
- * const prefersDark = usePrefersDarkMode();
  */
 export function usePrefersDarkMode(): boolean {
   return useMediaQuery('(prefers-color-scheme: dark)');
@@ -93,14 +74,6 @@ export function usePrefersDarkMode(): boolean {
 
 /**
  * Hook to detect if user prefers reduced motion
- * Important for accessibility (disable animations)
- * 
- * @example
- * const prefersReducedMotion = usePrefersReducedMotion();
- * 
- * if (prefersReducedMotion) {
- *   return <StaticChart />;
- * }
  */
 export function usePrefersReducedMotion(): boolean {
   return useMediaQuery('(prefers-reduced-motion: reduce)');
@@ -108,30 +81,23 @@ export function usePrefersReducedMotion(): boolean {
 
 /**
  * Hook to detect touch device
- * 
- * @example
- * const isTouch = useIsTouch();
- * 
- * if (isTouch) {
- *   return <TouchOptimizedNav />;
- * }
+ * Fixed: logic moved to initializer to avoid setState in effect
  */
 export function useIsTouch(): boolean {
-  const [isTouch, setIsTouch] = useState(false);
+  const [isTouch, setIsTouch] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  });
 
   useEffect(() => {
-    const checkTouch = () => {
-      setIsTouch(
-        'ontouchstart' in window ||
-        navigator.maxTouchPoints > 0
-      );
-    };
-
-    checkTouch();
-    window.addEventListener('touchstart', checkTouch, { once: true });
-
+    // We only need to listen for the event to catch edge cases
+    // where touch capability might be attached later (rare, but possible)
+    const handleTouch = () => setIsTouch(true);
+    
+    window.addEventListener('touchstart', handleTouch, { once: true });
+    
     return () => {
-      window.removeEventListener('touchstart', checkTouch);
+      window.removeEventListener('touchstart', handleTouch);
     };
   }, []);
 
@@ -140,24 +106,20 @@ export function useIsTouch(): boolean {
 
 /**
  * Hook to get window dimensions
- * 
- * @example
- * const { width, height } = useWindowSize();
- * 
- * if (width < 768) {
- *   return <MobileView />;
- * }
  */
 export function useWindowSize(): { width: number; height: number } {
-  const [windowSize, setWindowSize] = useState<{ width: number; height: number }>({
-    width: typeof window !== 'undefined' ? window.innerWidth : 0,
-    height: typeof window !== 'undefined' ? window.innerHeight : 0,
+  const [windowSize, setWindowSize] = useState<{ width: number; height: number }>(() => {
+    if (typeof window === 'undefined') {
+      return { width: 0, height: 0 };
+    }
+    return {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
+    if (typeof window === 'undefined') return;
 
     const handleResize = () => {
       setWindowSize({

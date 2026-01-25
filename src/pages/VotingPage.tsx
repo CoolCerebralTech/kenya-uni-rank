@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Button } from '../components/ui/Button';
-import { Spinner } from '../components/ui/Spinner';
+import { Spinner } from '../components/ui/FullScreenLoader';
 import { EmptyState } from '../components/ui/EmptyState';
 
 // Voting Components

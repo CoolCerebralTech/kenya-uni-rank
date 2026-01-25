@@ -1,14 +1,13 @@
 import React from 'react';
 
-interface DividerProps {
+// Enhanced with subtle gradient for more depth
+export const Divider: React.FC<{
   label?: string;
   vertical?: boolean;
   className?: string;
-}
-
-export const Divider: React.FC<DividerProps> = ({ label, vertical = false, className = '' }) => {
+}> = ({ label, vertical = false, className = '' }) => {
   if (vertical) {
-    return <div className={`w-px h-full bg-slate-800 ${className}`} />;
+    return <div className={`w-px h-full bg-gradient-to-b from-transparent via-slate-800 to-transparent ${className}`} />;
   }
 
   return (

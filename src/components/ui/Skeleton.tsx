@@ -15,7 +15,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   className = '',
   count = 1,
 }) => {
-  const baseClasses = "animate-pulse bg-slate-800/50 rounded";
+  const baseClasses = "bg-slate-800/50 rounded";
   
   const variants = {
     text: "h-4 w-full rounded-md",
@@ -23,11 +23,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     circle: "h-12 w-12 rounded-full",
   };
 
-  const style = {
-    width: width,
-    height: height,
-  };
-
+  const style = { width, height };
   const items = Array(count).fill(0);
 
   return (
@@ -35,9 +31,12 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       {items.map((_, index) => (
         <div
           key={index}
-          className={`${baseClasses} ${variants[variant]} ${className} ${count > 1 && index < count - 1 ? 'mb-2' : ''}`}
+          className={`relative overflow-hidden ${baseClasses} ${variants[variant]} ${className} ${count > 1 && index < count - 1 ? 'mb-2' : ''}`}
           style={style}
-        />
+        >
+          {/* UPGRADE: Standardized shimmer effect */}
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-slate-700/50 to-transparent" />
+        </div>
       ))}
     </>
   );

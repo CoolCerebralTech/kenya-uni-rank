@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/ui/Badge';
-import { Spinner } from '../components/ui/Spinner';
+import { Spinner } from '../components/ui/FullScreenLoader';
 import { Select } from '../components/ui/Select';
 
 // Visualization

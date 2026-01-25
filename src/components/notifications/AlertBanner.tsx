@@ -1,62 +1,51 @@
 import React, { useState } from 'react';
 import { X, Info, AlertTriangle, CheckCircle, AlertOctagon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-interface AlertBannerProps {
+export const AlertBanner: React.FC<{
   type?: 'info' | 'warning' | 'error' | 'success';
-  message: string;
+  message: string | React.ReactNode;
   isSticky?: boolean;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-}
-
-export const AlertBanner: React.FC<AlertBannerProps> = ({ 
-  type = 'info', 
-  message, 
-  isSticky = false,
-  action 
-}) => {
+  action?: { label: string; onClick: () => void };
+}> = ({ type = 'info', message, isSticky = false, action }) => {
   const [isVisible, setIsVisible] = useState(true);
 
-  if (!isVisible) return null;
-
   const styles = {
-    info: { bg: 'bg-blue-600', icon: Info },
-    warning: { bg: 'bg-amber-600', icon: AlertTriangle },
-    error: { bg: 'bg-red-600', icon: AlertOctagon },
-    success: { bg: 'bg-green-600', icon: CheckCircle },
+    info:    { border: 'border-blue-500/50',    bg: 'bg-blue-950/30',    icon: Info,          iconColor: 'text-blue-400' },
+    warning: { border: 'border-amber-500/50',   bg: 'bg-amber-950/30',   icon: AlertTriangle, iconColor: 'text-amber-400' },
+    error:   { border: 'border-red-500/50',     bg: 'bg-red-950/30',     icon: AlertOctagon,  iconColor: 'text-red-400' },
+    success: { border: 'border-emerald-500/50', bg: 'bg-emerald-950/30', icon: CheckCircle,   iconColor: 'text-emerald-400' },
   };
-
-  const Style = styles[type];
-  const Icon = Style.icon;
+  const style = styles[type];
+  const Icon = style.icon;
 
   return (
-    <div className={`
-      ${isSticky ? 'sticky top-0 z-[60]' : 'relative'}
-      ${Style.bg} text-white px-4 py-3 shadow-lg flex items-center justify-between gap-4
-    `}>
-      <div className="flex items-center gap-3 text-sm font-medium">
-        <Icon size={18} className="shrink-0" />
-        <span>{message}</span>
-      </div>
-
-      <div className="flex items-center gap-4">
-        {action && (
-          <button 
-            onClick={action.onClick}
-            className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap"
-          >
-            {action.label}
-          </button>
-        )}
-        <button 
-          onClick={() => setIsVisible(false)}
-          className="text-white/80 hover:text-white p-1"
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, height: 0, padding: 0, margin: 0, transition: { duration: 0.3 } }}
+          className={`${isSticky ? 'sticky top-16 z-30' : 'relative'} w-full`} // Sticky below header
         >
-          <X size={16} />
-        </button>
-      </div>
-    </div>
+          <div className={`text-white px-4 py-3 shadow-lg flex items-center justify-between gap-4 border-l-4 ${style.border} ${style.bg}`}>
+            <div className="flex items-center gap-3 text-sm font-medium">
+              <Icon size={20} className={`shrink-0 ${style.iconColor}`} />
+              <span className="text-slate-200">{message}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              {action && (
+                <button onClick={action.onClick} className="text-xs font-bold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">
+                  {action.label}
+                </button>
+              )}
+              <button onClick={() => setIsVisible(false)} className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10">
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

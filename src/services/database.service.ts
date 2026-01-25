@@ -16,6 +16,7 @@ type DbPoll = Database['public']['Tables']['polls']['Row'];
 type DbUniversity = Database['public']['Tables']['universities']['Row'];
 type DbVoteInsert = Database['public']['Tables']['votes']['Insert'];
 type DbPollResult = Database['public']['Views']['poll_results']['Row'];
+type VoteInsertPayload = Database['public']['Tables']['votes']['Insert'] & { created_at: string };
 
 // ============================================================================
 // RESPONSE WRAPPER TYPES
@@ -601,8 +602,8 @@ export function subscribeToPollVotes(
 }
 
 export function subscribeToAllVotes(
-  onVoteAdded: (payload: { pollId: string; universityId: string }) => void
-): () => void {
+  onVoteAdded: (payload: { new: VoteInsertPayload }) => void
+): { subscription: RealtimeChannel; unsubscribe: () => void } {
   const channel: RealtimeChannel = supabase
     .channel('all-votes')
     .on(
@@ -614,21 +615,20 @@ export function subscribeToAllVotes(
       },
       (payload) => {
         console.log('[Realtime] New vote received:', payload);
-        const newVote = payload.new as { poll_id: string; university_id: string };
-        onVoteAdded({
-          pollId: newVote.poll_id,
-          universityId: newVote.university_id,
-        });
+        // FIX: Pass the entire payload, which includes the 'new' record
+        onVoteAdded(payload as unknown as { new: VoteInsertPayload });
       }
     )
     .subscribe();
 
   console.log('[Realtime] Subscribed to all votes');
-
-  return () => {
+  
+  const unsubscribe = () => {
     console.log('[Realtime] Unsubscribing from all votes');
     supabase.removeChannel(channel);
   };
+
+  return { subscription: channel, unsubscribe };
 }
 
 // ============================================================================
