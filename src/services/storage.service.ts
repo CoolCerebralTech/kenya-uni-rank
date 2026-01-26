@@ -3,7 +3,7 @@
 // Handles localStorage, sessionStorage, and caching to solve "long wait" problem
 // ============================================================================
 
-import type { Poll, PollResultsAggregate } from '../types/models';
+import { CACHE_CONFIG, type Poll, type PollResultsAggregate } from '../types/models';
 
 // ============================================================================
 // STORAGE KEYS
@@ -409,7 +409,36 @@ export function getCachedPollResults(
     return null;
   }
 }
-
+/**
+ * NEW: Find cached results by poll slug instead of ID
+ * FIXED: Improved error handling and check logic
+ */
+export function getCachedPollResultsBySlug(slug: string): PollResultsAggregate | null {
+  if (!isStorageAvailable()) return null;
+  
+  
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.includes('_results_')) { // More robust key check
+        const stored = localStorage.getItem(key);
+        if (!stored) continue;
+        
+        const cached = JSON.parse(stored);
+        // Check if this specific cached item belongs to the slug we want
+        if (cached.value?.pollSlug === slug || cached.value?.pollQuestion?.toLowerCase().includes(slug.replace('-', ' '))) {
+          const age = Date.now() - cached.timestamp;
+          if (age < CACHE_CONFIG.RESULTS_TTL) {
+            return cached.value;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[Storage] Cache slug lookup failed', e);
+  }
+  return null;
+}
 /**
  * Invalidate poll results cache (after voting)
  */

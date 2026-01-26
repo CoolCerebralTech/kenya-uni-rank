@@ -38,7 +38,6 @@ interface HeatMapData {
   value: number;
 }
 
-// FIXED: Defined a strict type for the line chart series
 interface LineSeries {
   name: string;
   color: string;
@@ -53,25 +52,32 @@ export const TrendsPage: React.FC = () => {
   const [selectedRange, setSelectedRange] = useState('6m');
   const [selectedCategory] = useState('overall');
   
-  // Data State - FIXED: Applied the LineSeries type
+  // Data State
   const [lineChartData, setLineChartData] = useState<{ labels: string[]; series: LineSeries[] } | null>(null);
   const [movers, setMovers] = useState<{ rising: Mover[]; falling: Mover[] }>({ rising: [], falling: [] });
   const [heatMapData, setHeatMapData] = useState<HeatMapData[]>([]);
   const [heatMapLabels, setHeatMapLabels] = useState<string[]>([]);
   
+  // 🔥 FIX: Memoize universities list
   const universities = useMemo(() => getAllUniversitiesSync(), []);
 
-  // --- DATA FETCHING ---
+  // 🔥 FIX: Load data directly in useEffect without dependencies that change
   useEffect(() => {
+    let isMounted = true;
+
     const loadTrends = async () => {
+      console.log('[TrendsPage] Loading trends data...');
       setIsLoading(true);
 
       try {
         const [leaderboardRes, risingRes] = await Promise.all([
-            getUniversityRankings(),
-            getRisingUniversities(5)
+          getUniversityRankings(),
+          getRisingUniversities(5)
         ]);
         
+        if (!isMounted) return;
+
+        // Rising stars
         if (risingRes.success && risingRes.data) {
           const risingStars = risingRes.data.map(uni => {
             const uniDetails = getUniversityById(uni.universityId);
@@ -87,30 +93,46 @@ export const TrendsPage: React.FC = () => {
           setMovers({ rising: risingStars, falling: [] });
         }
 
+        // Get top 5 universities
         let top5Unis: University[] = [];
         if (leaderboardRes.success && leaderboardRes.data) {
-            top5Unis = leaderboardRes.data.slice(0, 5).map(u => getUniversityById(u.id)).filter((u): u is University => !!u);
+          top5Unis = leaderboardRes.data
+            .slice(0, 5)
+            .map(u => getUniversityById(u.id))
+            .filter((u): u is University => !!u);
         } else {
-            top5Unis = universities.slice(0, 5);
+          top5Unis = universities.slice(0, 5);
         }
 
+        if (!isMounted) return;
+
+        // Fetch trend data for line chart
         const trendPromises = top5Unis.map(uni => getUniversityTrend(uni.id, 6));
         const trendResponses = await Promise.all(trendPromises);
         
+        if (!isMounted) return;
+
         const series: LineSeries[] = trendResponses.map((res, index) => {
-            const uni = top5Unis[index];
-            const data = res.success && res.data ? res.data.map(d => Math.round(d.percentage)).reverse() : Array(6).fill(0);
-            return { name: uni.shortName, color: uni.color, data };
+          const uni = top5Unis[index];
+          const data = res.success && res.data 
+            ? res.data.map(d => Math.round(d.percentage)).reverse() 
+            : Array(6).fill(0);
+          return { name: uni.shortName, color: uni.color, data };
         });
 
-        const labels = trendResponses[0]?.data?.map(d => new Date(d.cycleMonth).toLocaleString('default', { month: 'short' })).reverse() || ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'];
+        const labels = trendResponses[0]?.data
+          ?.map(d => new Date(d.cycleMonth).toLocaleString('default', { month: 'short' }))
+          .reverse() || ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'];
+        
         setLineChartData({ labels, series });
 
-
+        // Heat map data
         const heatMapUnis = top5Unis.slice(0, 8);
         const heatMapUniIds = heatMapUnis.map(u => u.id);
         const sentimentRes = await getUniversitySentimentStats(heatMapUniIds);
         
+        if (!isMounted) return;
+
         if (sentimentRes.success && sentimentRes.data) {
           const categories = ['vibes', 'academics', 'sports', 'social', 'facilities'];
           const heatData: HeatMapData[] = [];
@@ -127,17 +149,32 @@ export const TrendsPage: React.FC = () => {
           setHeatMapLabels(heatMapUnis.map(u => u.shortName));
         }
 
+        console.log('[TrendsPage] Data loaded successfully');
+
       } catch (error) {
-        console.error("Failed to load trends:", error);
-        showErrorToast("Could not load market intelligence data.");
+        console.error('[TrendsPage] Failed to load trends:', error);
+        if (isMounted) {
+          showErrorToast("Could not load market intelligence data.");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadTrends();
-  }, [selectedRange, selectedCategory, showErrorToast, universities]);
 
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedRange, selectedCategory]); // 🔥 FIX: Only depend on user-controlled values
+
+  // 🔥 FIX: Memoize handlers
+  const handleRangeChange = useMemo(
+    () => (e: React.ChangeEvent<HTMLSelectElement>) => setSelectedRange(e.target.value),
+    []
+  );
 
   if (isLoading) {
     return (
@@ -166,7 +203,7 @@ export const TrendsPage: React.FC = () => {
           <div className="flex gap-3">
             <Select 
               value={selectedRange}
-              onChange={(e) => setSelectedRange(e.target.value)}
+              onChange={handleRangeChange}
               options={[
                 { label: 'Last 6 Months', value: '6m' },
                 { label: 'Year to Date', value: 'ytd', disabled: true }
@@ -177,58 +214,87 @@ export const TrendsPage: React.FC = () => {
           </div>
         </div>
 
-        <Card className="mb-12 p-6 bg-slate-900/50 border-slate-800">
+        {/* Sentiment Momentum Chart */}
+        <Card className="mb-12 p-6 bg-slate-900/50 border-slate-800 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h3 className="text-lg font-bold text-white mb-1">Sentiment Momentum</h3>
           <p className="text-xs text-slate-500 mb-6">Aggregated approval rating for top 5 universities.</p>
           <div className="h-[300px] w-full">
-            {lineChartData && (
+            {lineChartData ? (
               <LineChart 
                 labels={lineChartData.labels}
                 series={lineChartData.series}
                 height={300}
               />
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-500">
+                No data available
+              </div>
             )}
           </div>
         </Card>
 
+        {/* Movers */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          <Card className="border-t-4 border-t-green-500">
+          <Card className="border-t-4 border-t-green-500 animate-in fade-in slide-in-from-left duration-500">
             <h3 className="font-bold text-white flex items-center gap-2 mb-4">
               <TrendingUp size={20} className="text-green-500" /> Rising Stars
             </h3>
             <div className="space-y-3">
-              {movers.rising.map((uni) => (
-                <div key={uni.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: uni.color }}>
-                      {uni.shortName}
+              {movers.rising.length > 0 ? (
+                movers.rising.map((uni, index) => (
+                  <div 
+                    key={uni.id} 
+                    className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors animate-in fade-in slide-in-from-left duration-300"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" 
+                        style={{ backgroundColor: uni.color }}
+                      >
+                        {uni.shortName}
+                      </div>
+                      <div className="font-bold text-white text-sm">{uni.name}</div>
                     </div>
-                    <div className="font-bold text-white text-sm">{uni.name}</div>
+                    <TrendIndicator trend="up" value={Math.abs(uni.change)} />
                   </div>
-                  <TrendIndicator trend="up" value={Math.abs(uni.change)} />
+                ))
+              ) : (
+                <div className="text-center py-8 text-slate-500 text-sm">
+                  No rising stars data available
                 </div>
-              ))}
+              )}
             </div>
           </Card>
-          <Card className="border-t-4 border-t-red-500 opacity-60">
-             <h3 className="font-bold text-white flex items-center gap-2 mb-4">
-                <TrendingDown size={20} className="text-red-500" /> Cooling Down
-              </h3>
-              <div className="text-center py-8 text-slate-500 text-sm">
-                Data service for this module is in development.
-              </div>
+
+          <Card className="border-t-4 border-t-red-500 opacity-60 animate-in fade-in slide-in-from-right duration-500">
+            <h3 className="font-bold text-white flex items-center gap-2 mb-4">
+              <TrendingDown size={20} className="text-red-500" /> Cooling Down
+            </h3>
+            <div className="text-center py-8 text-slate-500 text-sm">
+              Data service for this module is in development.
+            </div>
           </Card>
         </div>
 
+        {/* Heat Map */}
         <SectionDivider label="Category Matrix" icon={<Filter size={16} />} />
-        <Card className="p-6 md:p-8 overflow-x-auto">
+        <Card className="p-6 md:p-8 overflow-x-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
           <h3 className="text-lg font-bold text-white mb-1">Strengths & Weaknesses</h3>
-          <p className="text-sm text-slate-400 mb-6">Heatmap showing performance across categories for top universities.</p>
-          <HeatMap 
-            data={heatMapData}
-            xLabels={['Vibes', 'Academics', 'Sports', 'Social', 'Facilities']}
-            yLabels={heatMapLabels}
-          />
+          <p className="text-sm text-slate-400 mb-6">
+            Heatmap showing performance across categories for top universities.
+          </p>
+          {heatMapData.length > 0 ? (
+            <HeatMap 
+              data={heatMapData}
+              xLabels={['Vibes', 'Academics', 'Sports', 'Social', 'Facilities']}
+              yLabels={heatMapLabels}
+            />
+          ) : (
+            <div className="text-center py-12 text-slate-500">
+              No heatmap data available
+            </div>
+          )}
         </Card>
 
       </PageContainer>

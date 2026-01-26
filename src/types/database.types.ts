@@ -1,6 +1,4 @@
-// ============================================================================
-// AUTO-GENERATED DATABASE TYPES (Manually Patched)
-// ============================================================================
+// src/types/database.types.ts
 
 export type Json =
   | string
@@ -13,6 +11,26 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      // --- NEW TABLE: WAITLIST ---
+      waitlist: {
+        Row: {
+          id: string
+          email: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      // ---------------------------
       universities: {
         Row: {
           id: string
@@ -310,7 +328,6 @@ export interface Database {
           ends_at: string | null
         }[]
       }
-      // --- START: ADDED FUNCTIONS ---
       get_daily_vote_counts: {
         Args: {
           p_poll_id: string
@@ -330,7 +347,6 @@ export interface Database {
           count: number
         }[]
       }
-      // --- END: ADDED FUNCTIONS ---
     }
     Enums: {
       [_ in never]: never

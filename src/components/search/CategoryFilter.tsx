@@ -12,7 +12,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   counts = {}, 
   onSelect 
 }) => {
-  const categories = ['all', 'general', 'vibes', 'academics', 'sports', 'social', 'facilities'];
+  const categories: (PollCategory | 'all')[] = ['all', 'general', 'vibes', 'academics', 'sports', 'social', 'facilities'];
 
   return (
     <div className="w-full overflow-x-auto no-scrollbar py-2 sticky top-0 bg-slate-950/90 backdrop-blur z-20 border-b border-slate-800/50">
@@ -20,7 +20,8 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
         {categories.map((cat) => (
           <button
             key={cat}
-            onClick={() => onSelect(cat as any)}
+            type="button"
+            onClick={() => onSelect(cat)}
             className={`
               flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 border
               ${activeCategory === cat 

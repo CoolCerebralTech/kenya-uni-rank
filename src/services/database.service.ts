@@ -486,14 +486,19 @@ export async function submitVote(
   voterType?: 'student' | 'alumni' | 'applicant' | 'other',
   userAgent?: string
 ): Promise<DatabaseResponse<{ voteId: string }>> {
+  
+  if (!fingerprintHash) {
+    return { data: null, error: 'Identity verification failed', success: false };
+  }
+
   try {
     const voteData: DbVoteInsert = {
       poll_id: pollId,
       university_id: universityId,
       fingerprint_hash: fingerprintHash,
-      ip_hash: ipHash,
-      voter_type: voterType,
-      user_agent: userAgent,
+      ip_hash: ipHash || null,
+      voter_type: voterType || null,
+      user_agent: userAgent || null,
     };
 
     const { data, error } = await supabase
@@ -503,10 +508,11 @@ export async function submitVote(
       .single();
 
     if (error) {
+      // 23505 is Supabase/PostgreSQL code for "Unique Violation" (Already Voted)
       if (error.code === '23505') {
         return { 
           data: null, 
-          error: 'You have already voted in this poll', 
+          error: 'You have already submitted your intelligence for this battle.', 
           success: false 
         };
       }
@@ -519,24 +525,16 @@ export async function submitVote(
       };
     }
 
-    if (!data) {
-      return {
-        data: null,
-        error: 'Vote submitted but no ID returned',
-        success: false,
-      };
-    }
-
     return { 
       data: { voteId: data.id }, 
       error: null, 
       success: true 
     };
   } catch (err) {
-    console.error('[DB] Unexpected error submitting vote:', err);
+    console.error('[DB] Unexpected error:', err);
     return { 
       data: null, 
-      error: 'An unexpected error occurred. Please try again.', 
+      error: 'The Truth Engine is temporarily offline.', 
       success: false 
     };
   }
@@ -735,5 +733,27 @@ export async function getPollCategoryCounts(): Promise<
       error: 'Failed to fetch category counts.', 
       success: false 
     };
+  }
+}
+/**
+ * Add an email to the Phase 2 waitlist
+ */
+export async function joinWaitlist(email: string): Promise<DatabaseResponse<null>> {
+  try {
+    const { error } = await supabase
+      .from('waitlist')
+      .insert({ email });
+
+    if (error) {
+      // Error code 23505 means "Unique Violation" (Email already exists)
+      if (error.code === '23505') {
+        return { success: true, data: null, error: null }; // Treat as success for the user
+      }
+      return { success: false, data: null, error: error.message };
+    }
+
+    return { success: true, data: null, error: null };
+  } catch {
+    return { success: false, data: null, error: 'Network error' };
   }
 }

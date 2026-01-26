@@ -21,10 +21,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     fullWidth = false, 
     children, 
     disabled, 
+    type = 'button', // Default to button to prevent accidental form submits
     ...props 
   }, ref) => {
     
-    const baseStyles = "inline-flex items-center justify-center rounded-lg font-semibold tracking-wide transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]";
+    const baseStyles = "relative inline-flex items-center justify-center rounded-lg font-bold tracking-wide transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] overflow-hidden";
     
     const variants = {
       primary: "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/20 border border-transparent focus:ring-blue-500 focus:ring-offset-slate-950",
@@ -44,15 +45,20 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         disabled={disabled || isLoading}
         className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${fullWidth ? "w-full" : ""} ${className}`}
         {...props}
       >
-        {isLoading && <Loader2 className="absolute h-5 w-5 animate-spin" />}
-        <span className={`flex items-center justify-center ${isLoading ? 'invisible' : 'visible'}`}>
-          {leftIcon && <span className="mr-2 -ml-1">{leftIcon}</span>}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-inherit">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        )}
+        <span className={`flex items-center justify-center transition-opacity ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+          {leftIcon && <span className="mr-2 -ml-1 flex items-center">{leftIcon}</span>}
           {children}
-          {rightIcon && <span className="ml-2 -mr-1">{rightIcon}</span>}
+          {rightIcon && <span className="ml-2 -mr-1 flex items-center">{rightIcon}</span>}
         </span>
       </button>
     );

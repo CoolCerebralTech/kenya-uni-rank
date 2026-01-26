@@ -49,7 +49,8 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   const content = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    // Increased Z-index to 100 to stay on top
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
@@ -67,8 +68,11 @@ export const Modal: React.FC<ModalProps> = ({
             {title}
           </h3>
           <button
+            type="button" // Fix: Set button type
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-800"
+            aria-label="Close modal" // Fix: Discernible text
+            title="Close"
           >
             <X size={20} />
           </button>

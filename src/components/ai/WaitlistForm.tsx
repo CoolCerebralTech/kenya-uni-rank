@@ -3,6 +3,8 @@ import { ArrowLeft, Mail, CheckCircle2, Users } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { toast } from '../../hooks/useToast';
+// IMPORT THE NEW SERVICE
+import { joinWaitlist } from '../../services/database.service';
 
 export const WaitlistForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [email, setEmail] = useState('');
@@ -10,15 +12,27 @@ export const WaitlistForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Basic validation
     if (!email.includes('@') || email.length < 5) {
       setStatus('error');
+      toast.error('Please enter a valid email address');
       return;
     }
+
     setStatus('loading');
-    setTimeout(() => {
+
+    // REAL DATABASE CALL
+    const response = await joinWaitlist(email);
+
+    if (response.success) {
       setStatus('success');
-      toast.success(`We'll notify ${email} when Phase 2 opens!`);
-    }, 1500);
+      toast.success(`You're on the list! We'll notify ${email}.`);
+    } else {
+      setStatus('idle'); // Allow retry
+      toast.error('Something went wrong. Please try again.');
+      console.error(response.error);
+    }
   };
 
   if (status === 'success') {
@@ -38,7 +52,11 @@ export const WaitlistForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   return (
     <div className="w-full">
-      <button onClick={onBack} className="flex items-center text-slate-500 hover:text-white mb-6 text-sm transition-colors">
+      <button 
+        type="button" 
+        onClick={onBack} 
+        className="flex items-center text-slate-500 hover:text-white mb-6 text-sm transition-colors"
+      >
         <ArrowLeft size={16} className="mr-1" /> Back
       </button>
 
@@ -47,7 +65,6 @@ export const WaitlistForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <p className="text-slate-400 text-sm">Phase 1 is full. Register for early access to the next AI Matchmaker release.</p>
       </div>
       
-      {/* UPGRADE: Social proof badge */}
       <div className="flex items-center gap-2 p-2 mb-4 rounded-md bg-slate-800/50 border border-slate-700 text-xs">
         <Users size={14} className="text-violet-400" />
         <span className="text-slate-300">Over <strong>5,000+</strong> students already in line.</span>

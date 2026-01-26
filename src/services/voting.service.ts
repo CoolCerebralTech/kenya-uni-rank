@@ -23,8 +23,11 @@ import {
   invalidatePollResultsCache,
   getVotedPolls,
   getVoteDetails,
+  getCachedPollResultsBySlug,
 } from './storage.service';
-import { getActivePolls } from './poll.service';
+import { getActivePolls, getPollBySlug } from './poll.service';
+import { supabase } from '../lib/supabase';
+
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
@@ -47,6 +50,36 @@ export interface VoteValidation {
 }
 
 // ============================================================================
+// UTILITY: RESOLVE SLUG TO UUID
+// ============================================================================
+
+/**
+ * 🔥 CRITICAL FIX: Resolve slug or ID to UUID
+ * Handles both slugs ("best-sports-facilities") and UUIDs
+ */
+async function resolvePollId(pollIdOrSlug: string): Promise<string | null> {
+  // Check if it's already a UUID (contains dashes in UUID format)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  if (uuidRegex.test(pollIdOrSlug)) {
+    console.log('[Voting] Already a UUID:', pollIdOrSlug);
+    return pollIdOrSlug; // Already a UUID
+  }
+  
+  // It's a slug, fetch the poll to get UUID
+  console.log('[Voting] Resolving slug to UUID:', pollIdOrSlug);
+  const pollRes = await getPollBySlug(pollIdOrSlug);
+  
+  if (!pollRes.success || !pollRes.data) {
+    console.error('[Voting] Could not resolve slug to UUID:', pollIdOrSlug);
+    return null;
+  }
+  
+  console.log('[Voting] Resolved to UUID:', pollRes.data.id);
+  return pollRes.data.id;
+}
+
+// ============================================================================
 // MAIN VOTING OPERATIONS
 // ============================================================================
 
@@ -55,12 +88,21 @@ export interface VoteValidation {
  * This is the main function components should call
  */
 export async function castVote(
-  pollId: string,
+  pollIdOrSlug: string,
   universityId: string,
   voterType?: 'student' | 'alumni' | 'applicant' | 'other'
 ): Promise<VoteResponse> {
   try {
-    console.log('[Voting] Attempting to cast vote:', { pollId, universityId });
+    console.log('[Voting] Attempting to cast vote:', { pollIdOrSlug, universityId });
+
+    // 🔥 FIX: Resolve to UUID first
+    const pollId = await resolvePollId(pollIdOrSlug);
+    if (!pollId) {
+      return {
+        success: false,
+        error: 'Poll not found',
+      };
+    }
 
     // Step 1: Check localStorage first (instant feedback)
     if (storageHasVoted(pollId)) {
@@ -141,10 +183,17 @@ export async function castVote(
 
 /**
  * Check if current user has already voted in a poll
- * Checks localStorage first for instant response, then verifies with DB
+ * 🔥 FIXED: Now handles both slugs and UUIDs
  */
-export async function checkIfVoted(pollId: string): Promise<boolean> {
+export async function checkIfVoted(pollIdOrSlug: string): Promise<boolean> {
   try {
+    // 🔥 FIX: Resolve to UUID first
+    const pollId = await resolvePollId(pollIdOrSlug);
+    if (!pollId) {
+      console.error('[Voting] Cannot check vote status - poll not found');
+      return false;
+    }
+
     // Quick localStorage check (instant)
     if (storageHasVoted(pollId)) {
       console.log('[Voting] Already voted (localStorage check):', pollId);
@@ -173,15 +222,25 @@ export async function checkIfVoted(pollId: string): Promise<boolean> {
   } catch (err) {
     console.error('[Voting] Error checking vote status:', err);
     // Fallback to localStorage on error
-    return storageHasVoted(pollId);
+    return false;
   }
 }
 
 /**
  * Validate if a vote can be submitted
+ * 🔥 FIXED: Now handles both slugs and UUIDs
  */
-export async function canVote(pollId: string): Promise<VoteValidation> {
+export async function canVote(pollIdOrSlug: string): Promise<VoteValidation> {
   try {
+    // 🔥 FIX: Resolve to UUID first
+    const pollId = await resolvePollId(pollIdOrSlug);
+    if (!pollId) {
+      return {
+        canVote: false,
+        reason: 'Poll not found',
+      };
+    }
+
     // Step 1: Check if already voted
     const hasVoted = await checkIfVoted(pollId);
 
@@ -263,6 +322,7 @@ export async function canVote(pollId: string): Promise<VoteValidation> {
 
 /**
  * Get a poll with its current results (with caching)
+ * 🔥 FIXED: Better slug handling
  */
 export async function getPollWithResults(
   slug: string,
@@ -272,93 +332,81 @@ export async function getPollWithResults(
   totalVotes: number;
 }>> {
   try {
-    // Note: getCachedPollResults uses pollId not slug, skip cache for now
-    // TODO: Implement slug-to-id cache mapping
+    // Check cache by slug before hitting DB
+    const cached = getCachedPollResultsBySlug(slug);
+    if (cached) {
+      console.log('[Voting] Using cached results for slug:', slug);
+      return {
+        success: true,
+        data: {
+          poll: null, // Note: Cache doesn't store full poll object
+          results: cached.results,
+          totalVotes: cached.totalVotes
+        },
+        error: null
+      };
+    }
 
-    // Fetch from database
     console.log('[Voting] Fetching fresh results for:', slug);
     const response = await dbGetPollWithResults(slug);
 
-    if (response.success && response.data) {
-      // Cache the results
-      const aggregate: PollResultsAggregate = {
-        pollId: response.data.poll?.id || '',
-        pollQuestion: response.data.poll?.question || '',
-        category: response.data.poll?.category || 'general',
-        totalVotes: response.data.totalVotes,
-        results: response.data.results,
+    if (response.success && response.data && response.data.poll) {
+      const { poll, results, totalVotes } = response.data;
+      
+      const aggregate: PollResultsAggregate & { pollSlug: string } = {
+        pollId: poll.id,
+        pollSlug: slug, // Store slug for mapping
+        pollQuestion: poll.question,
+        category: poll.category,
+        totalVotes: totalVotes,
+        results: results,
         lastUpdated: new Date().toISOString(),
-        cycleMonth: response.data.poll?.cycleMonth || null,
+        cycleMonth: poll.cycleMonth,
       };
 
-      if (response.data.poll?.id) {
-        cachePollResults(response.data.poll.id, aggregate);
-      }
+      cachePollResults(poll.id, aggregate);
     }
 
     return response;
   } catch (err) {
     console.error('[Voting] Unexpected error getting poll results:', err);
-    return {
-      success: false,
-      data: null,
-      error: 'Failed to fetch poll results',
-    };
+    return { success: false, data: null, error: 'Failed to fetch poll results' };
   }
 }
 
 /**
  * Get poll results by ID (with caching)
+ * 🔥 FIXED: Now handles both slugs and UUIDs
  */
 export async function getPollResultsById(
-  pollId: string,
+  pollIdOrSlug: string,
   useCache: boolean = true
 ): Promise<DatabaseResponse<PollResultsAggregate>> {
   try {
-    // Try cache first
+    // 🔥 FIX: Resolve to UUID first
+    const pollId = await resolvePollId(pollIdOrSlug);
+    if (!pollId) {
+      return { success: false, data: null, error: 'Poll not found' };
+    }
+
     if (useCache) {
       const cached = getCachedPollResults(pollId);
-      if (cached) {
-        console.log('[Voting] Using cached results for poll ID:', pollId);
-        return {
-          success: true,
-          data: cached,
-          error: null,
-        };
-      }
+      if (cached) return { success: true, data: cached, error: null };
     }
 
-    // Fetch from database using poll_results view
-    const { data: resultsData, error } = await import('../lib/supabase').then(
-      ({ supabase }) =>
-        supabase
-          .from('poll_results')
-          .select('*')
-          .eq('poll_id', pollId)
-          .order('votes', { ascending: false })
-    );
+    // Fetch from database using standard supabase client
+    const { data: resultsData, error } = await supabase
+      .from('poll_results')
+      .select('*')
+      .eq('poll_id', pollId)
+      .order('votes', { ascending: false });
 
-    if (error) {
-      console.error('[Voting] Error fetching results:', error);
-      return {
-        success: false,
-        data: null,
-        error: error.message,
-      };
-    }
-
+    if (error) throw error;
     if (!resultsData || resultsData.length === 0) {
-      return {
-        success: false,
-        data: null,
-        error: 'No results found',
-      };
+      return { success: false, data: null, error: 'No results found' };
     }
 
-    // Build aggregate
-    const firstResult = resultsData[0];
-    const totalVotes = resultsData.reduce((sum, r) => sum + r.votes, 0);
-
+    const totalVotes = resultsData.reduce((sum, r) => sum + (r.votes || 0), 0);
     const results: PollResult[] = resultsData.map((r) => ({
       pollId: r.poll_id,
       pollQuestion: r.poll_question,
@@ -376,31 +424,22 @@ export async function getPollResultsById(
 
     const aggregate: PollResultsAggregate = {
       pollId,
-      pollQuestion: firstResult.poll_question,
-      category: firstResult.category as PollCategory,
+      pollQuestion: resultsData[0].poll_question,
+      category: resultsData[0].category as PollCategory,
       totalVotes,
       results,
       lastUpdated: new Date().toISOString(),
-      cycleMonth: firstResult.cycle_month,
+      cycleMonth: resultsData[0].cycle_month,
     };
 
-    // Cache it
     cachePollResults(pollId, aggregate);
-
-    return {
-      success: true,
-      data: aggregate,
-      error: null,
-    };
+    return { success: true, data: aggregate, error: null };
   } catch (err) {
-    console.error('[Voting] Unexpected error fetching results by ID:', err);
-    return {
-      success: false,
-      data: null,
-      error: 'Failed to fetch results',
-    };
+    console.error('[Voting] Error fetching results:', err);
+    return { success: false, data: null, error: 'Failed to fetch results' };
   }
 }
+
 /**
  * PRODUCTION-READY FUNCTION
  * Gets all active polls for a category and enriches them with the user's voting status.
@@ -411,13 +450,8 @@ export async function getPollsForVoting(
   try {
     const pollsResponse = await getActivePolls(category);
     
-    // FIX: Check for failure and return a correctly typed error response
     if (!pollsResponse.success || !pollsResponse.data) {
-      return {
-        success: false,
-        data: null,
-        error: pollsResponse.error || 'Failed to fetch polls.',
-      };
+      return { success: false, data: null, error: pollsResponse.error || 'No polls.' };
     }
 
     const votedPollIds = getVotedPolls();
@@ -432,19 +466,9 @@ export async function getPollsForVoting(
       };
     });
 
-    return {
-      success: true,
-      data: pollsWithStatus,
-      error: null,
-    };
-
-  } catch (error) {
-    console.error('[VotingService] Error getting polls with status:', error);
-    return {
-      success: false,
-      data: null,
-      error: 'Failed to prepare voting session.',
-    };
+    return { success: true, data: pollsWithStatus, error: null };
+  } catch {
+    return { success: false, data: null, error: 'Session initialization failed.' };
   }
 }
 
@@ -572,8 +596,6 @@ export function getVotingProgress(): {
   totalVoted: number;
   categories: Record<string, number>;
 } {
-
-  // This is synchronous in reality, just for type safety
   return {
     totalVoted: 0,
     categories: {},

@@ -1,5 +1,11 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { 
+  createBrowserRouter, 
+  RouterProvider, 
+  useLocation,
+  Outlet,
+  Navigate
+} from 'react-router-dom';
 
 // --- PROVIDERS ---
 import { ToastProvider } from './hooks/useToast';
@@ -8,24 +14,17 @@ import { ToastProvider } from './hooks/useToast';
 import { HomePage } from './pages/HomePage';
 import { VotingPage } from './pages/VotingPage';
 import { PollDetailPage } from './pages/PollDetailPage';
-
-// --- PLACEHOLDER PAGES (To prevent crashes for missing files) ---
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-    <div className="text-center space-y-4">
-      <div className="inline-block p-4 rounded-full bg-slate-900 border border-slate-800 animate-pulse">
-        <span className="text-4xl">🚧</span>
-      </div>
-      <h1 className="text-2xl md:text-3xl font-bold text-white">{title}</h1>
-      <p className="text-slate-400 max-w-md mx-auto">
-        This module is currently under development for Phase 2.
-      </p>
-      <a href="/" className="inline-block text-cyan-400 hover:text-cyan-300 font-medium">
-        &larr; Return Home
-      </a>
-    </div>
-  </div>
-);
+import { ResultsPage } from './pages/ResultsPage';
+import { LeaderboardPage } from './pages/LeaderboardPage';
+import { CategoryDetailPage } from './pages/CategoryDetailPage';
+import { ComparisonPage } from './pages/ComparisonPage';
+import { UniversityProfilePage } from './pages/UniversityProfilePage';
+import { TrendsPage } from './pages/TrendsPage';
+import { SearchPage } from './pages/SearchPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { AboutPage } from './pages/AboutPage';
+import { HowItWorksPage } from './pages/HowItWorksPage';
+import { ErrorPage } from './pages/ErrorPage';
 
 // --- UTILITIES ---
 const ScrollToTop = () => {
@@ -36,57 +35,103 @@ const ScrollToTop = () => {
   return null;
 };
 
-// --- APP COMPONENT ---
+const RootLayout = () => (
+  <>
+    <ScrollToTop />
+    <Outlet />
+  </>
+);
+
+// --- ROUTER CONFIGURATION ---
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <RootLayout />,
+    errorElement: <ErrorPage />, 
+    children: [
+      {
+        index: true,
+        element: <HomePage />,
+      },
+      // 1. Voting Routes
+      {
+        path: "vote/:category",
+        element: <VotingPage />,
+      },
+      {
+        // FIX: Handle generic "/voting" or "/polls" clicks 
+        // by sending them to the Search/Discovery page
+        path: "voting",
+        element: <SearchPage />,
+      },
+      {
+        path: "polls",
+        element: <SearchPage />,
+      },
+      
+      // 2. Results & Details
+      {
+        path: "poll/:slug",
+        element: <PollDetailPage />,
+      },
+      {
+        path: "results/:category?",
+        element: <ResultsPage />,
+      },
+      {
+        path: "category/:category",
+        element: <CategoryDetailPage />,
+      },
+
+      // 3. Analytics & Rankings
+      {
+        path: "leaderboard",
+        element: <LeaderboardPage />,
+      },
+      {
+        path: "trends",
+        element: <TrendsPage />,
+      },
+      {
+        path: "compare",
+        element: <ComparisonPage />,
+      },
+      {
+        path: "university/:id",
+        element: <UniversityProfilePage />,
+      },
+
+      // 4. User & Info
+      {
+        path: "profile",
+        element: <ProfilePage />,
+      },
+      {
+        path: "search",
+        element: <SearchPage />,
+      },
+      {
+        path: "about",
+        element: <AboutPage />,
+      },
+      {
+        path: "how-it-works",
+        element: <HowItWorksPage />,
+      },
+
+      // 5. Fallback for any other typed URL
+      {
+        path: "*",
+        element: <Navigate to="/" replace />,
+      }
+    ],
+  },
+]);
+
 export const App: React.FC = () => {
   return (
     <ToastProvider>
-      <BrowserRouter>
-        <ScrollToTop />
-        
-        <Routes>
-          {/* =========================================================
-              CORE PAGES
-          ========================================================= */}
-          <Route path="/" element={<HomePage />} />
-          
-          {/* 
-            Voting Flow:
-            Matches /vote/Vibes, /vote/Academics, etc. 
-          */}
-          <Route path="/vote/:category" element={<VotingPage />} />
-          
-          {/* 
-            Single Poll Result/Detail:
-            Matches /poll/best-campus-life-2025 
-          */}
-          <Route path="/poll/:slug" element={<PollDetailPage />} />
-
-          {/* =========================================================
-              PLACEHOLDERS / FUTURE ROUTES
-              (These prevent 404s when clicking buttons in HomePage)
-          ========================================================= */}
-          
-          {/* Note: HomePage navigates to /polls?category=... */}
-          <Route path="/polls" element={<PlaceholderPage title="Search & Explore" />} />
-          
-          <Route path="/results" element={<PlaceholderPage title="Overall Results" />} />
-          <Route path="/results/:category" element={<PlaceholderPage title="Category Results" />} />
-          
-          <Route path="/leaderboard" element={<PlaceholderPage title="University Leaderboard" />} />
-          <Route path="/compare" element={<PlaceholderPage title="University Comparison" />} />
-          
-          <Route path="/how-it-works" element={<PlaceholderPage title="How It Works" />} />
-          <Route path="/about" element={<PlaceholderPage title="About UniPulse" />} />
-          
-          <Route path="/profile" element={<PlaceholderPage title="Student Profile" />} />
-
-          {/* =========================================================
-              FALLBACK
-          ========================================================= */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-          
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </ToastProvider>
   );
 };

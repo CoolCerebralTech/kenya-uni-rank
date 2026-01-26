@@ -1,247 +1,135 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { AppLayout } from '../components/layout/AppLayout';
+import { PageContainer } from '../components/layout/PageContainer';
+import { Button } from '../components/ui/Button';
+import { CheckCircle2, ArrowRight, ArrowLeft, Trophy, Vote, Unlock, BarChart3, Bot } from 'lucide-react';
 
-export function HowItWorksPage() {
+export const HowItWorksPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
 
   const steps = [
     {
-      step: 1,
-      emoji: '🏠',
-      title: 'Land on Homepage',
-      description: 'See a live preview of university rankings in "Ghost Mode" - teaser data that shows what\'s possible.',
-      details: [
-        'Browse 6 main categories: Vibes, Academics, Sports, Social, Facilities, General',
-        'See your progress tracker (how many categories you\'ve completed)',
-        'Pick a category that matters most to you',
-      ],
-      image: '📊',
+      icon: BarChart3,
+      title: 'Analyze the Field',
+      desc: 'Start at the dashboard to see live teaser data. Explore categories that matter to your future.',
+      details: ['Vibes & Culture', 'Academic Rigor', 'Social Scene'],
     },
     {
-      step: 2,
-      emoji: '🗳️',
-      title: 'Vote Honestly',
-      description: 'Cast your vote in polls across your chosen category. No login required.',
-      details: [
-        'One-click voting - tap a university logo to vote',
-        'Vote on 5-20 polls per category',
-        'See instant feedback: "Your vote shifted the race!"',
-        'Progress bar shows you\'re almost done',
-      ],
-      image: '✅',
+      icon: Vote,
+      title: 'Cast Your Intelligence',
+      desc: 'Participate in polls. Your data fingerprint ensures a fair and accurate student sentiment index.',
+      details: ['No registration required', 'One-tap voting system', 'Encrypted anonymity'],
     },
     {
-      step: 3,
-      emoji: '🔓',
-      title: 'Unlock Reality',
-      description: 'After voting, see REAL student opinions and live rankings.',
-      details: [
-        'Racing bar charts show true standings',
-        'University colors and branding visible',
-        'Live pulse indicators on top 3 universities',
-        'Results update in real-time as votes come in',
-      ],
-      image: '🏁',
+      icon: Unlock,
+      title: 'Unlock the Truth',
+      desc: 'Once you contribute, the system decrypts the real results, showing colors, names, and trends.',
+      details: ['Real-time racing charts', 'University branding', 'National rankings'],
     },
     {
-      step: 4,
-      emoji: '🎯',
-      title: 'Repeat & Conquer',
-      description: 'Complete more categories to build a full picture.',
-      details: [
-        'Each category unlocks new insights',
-        'Earn badges: First Vote, Category Master, Full Completion',
-        'Compare universities across different aspects',
-        'Share results with friends',
-      ],
-      image: '🏆',
+      icon: Trophy,
+      title: 'Rank Up',
+      desc: 'Complete all categories to earn the "Completionist" badge and unlock deep-dive comparison tools.',
+      details: ['Earn Voter XP', 'Unlock Radar Charts', 'Share results'],
     },
     {
-      step: 5,
-      emoji: '🤖',
-      title: 'AI Matching (Coming Soon)',
-      description: 'Get personalized university recommendations based on YOUR preferences.',
-      details: [
-        'Tell us your learning style (practical vs theory)',
-        'Share your social preferences (quiet vs lively)',
-        'Input your budget and location needs',
-        'Get your Top 3 matches with honest trade-offs',
-      ],
-      image: '✨',
+      icon: Bot,
+      title: 'AI Matching',
+      desc: 'Coming Phase 2: Our AI agent will match your personality to the perfect university fit.',
+      details: ['Vibe matching', 'Budget optimization', 'Location analysis'],
     },
   ];
 
-  const currentStep = steps[activeStep];
+  const ActiveIcon = steps[activeStep].icon;
 
   return (
-    <div className="min-h-screen bg-slate-900 py-12">
-      <div className="container mx-auto px-4 max-w-6xl space-y-12">
+    <AppLayout>
+      <PageContainer maxWidth="lg" title="How It Works">
         
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-5xl font-black text-white">How UniPulse Works</h1>
-          <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-            Your step-by-step guide to finding the perfect university fit
-          </p>
+        <div className="text-center mb-16">
+          <h1 className="text-4xl md:text-5xl font-black text-white mb-4 italic">THE PROTOCOL</h1>
+          <p className="text-slate-400 text-lg">Follow these steps to master the student truth engine.</p>
         </div>
 
-        {/* Interactive Stepper */}
-        <div className="bg-slate-800/30 border border-slate-700/30 rounded-2xl p-8">
-          
-          {/* Step Progress Bar */}
-          <div className="flex items-center justify-between mb-8">
-            {steps.map((step, index) => (
-              <div key={step.step} className="flex items-center flex-1">
-                <button
-                  onClick={() => setActiveStep(index)}
-                  className={`relative flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold transition-all ${
-                    index === activeStep
-                      ? 'bg-cyan-500 border-cyan-400 text-white scale-110'
-                      : index < activeStep
-                      ? 'bg-green-500 border-green-400 text-white'
-                      : 'bg-slate-700 border-slate-600 text-slate-400'
-                  }`}
-                >
-                  {index < activeStep ? '✓' : step.step}
-                </button>
-                
-                {index < steps.length - 1 && (
-                  <div className={`h-0.5 flex-1 mx-2 ${index < activeStep ? 'bg-green-500' : 'bg-slate-700'}`} />
-                )}
-              </div>
+        <div className="grid lg:grid-cols-12 gap-12 items-start mb-20">
+          {/* STEP LIST */}
+          <div className="lg:col-span-4 space-y-4">
+            {steps.map((step, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveStep(i)}
+                className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex items-center gap-4 ${
+                  activeStep === i 
+                    ? 'bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.1)]' 
+                    : 'bg-slate-900 border-slate-800 opacity-60 hover:opacity-100'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${activeStep === i ? 'bg-cyan-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                  {i + 1}
+                </div>
+                <span className={`font-bold ${activeStep === i ? 'text-white' : 'text-slate-400'}`}>
+                  {step.title}
+                </span>
+              </button>
             ))}
           </div>
 
-          {/* Step Content */}
-          <div className="space-y-6">
-            {/* Title */}
-            <div className="text-center space-y-3">
-              <div className="text-6xl">{currentStep.emoji}</div>
-              <h2 className="text-3xl font-black text-white">{currentStep.title}</h2>
-              <p className="text-lg text-slate-400">{currentStep.description}</p>
-            </div>
-
-            {/* Visual */}
-            <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-12 text-center">
-              <div className="text-8xl">{currentStep.image}</div>
-            </div>
-
-            {/* Details */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 space-y-3">
-              {currentStep.details.map((detail, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="mt-1 w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs text-cyan-400">✓</span>
-                  </div>
-                  <div className="text-sm text-slate-300">{detail}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Navigation */}
-            <div className="flex justify-between items-center pt-4">
-              <button
-                onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
-                disabled={activeStep === 0}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                  activeStep === 0
-                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    : 'bg-slate-700 hover:bg-slate-600 text-white'
-                }`}
-              >
-                ← Previous
-              </button>
-
-              <div className="text-sm text-slate-500">
-                Step {activeStep + 1} of {steps.length}
+          {/* STEP DISPLAY */}
+          <div className="lg:col-span-8">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 md:p-12 relative overflow-hidden h-full">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <ActiveIcon size={120} className="text-cyan-400" />
               </div>
 
-              <button
-                onClick={() => setActiveStep(Math.min(steps.length - 1, activeStep + 1))}
-                disabled={activeStep === steps.length - 1}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                  activeStep === steps.length - 1
-                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    : 'bg-cyan-500 hover:bg-cyan-600 text-white'
-                }`}
-              >
-                Next →
-              </button>
+              <div className="relative z-10 space-y-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold uppercase">
+                  Step {activeStep + 1} of {steps.length}
+                </div>
+                <h2 className="text-3xl font-black text-white">{steps[activeStep].title}</h2>
+                <p className="text-lg text-slate-400 leading-relaxed">
+                  {steps[activeStep].desc}
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                  {steps[activeStep].details.map((detail, j) => (
+                    <div key={j} className="flex items-center gap-3 text-slate-300 bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                      <CheckCircle2 size={18} className="text-cyan-400" />
+                      <span className="text-sm font-medium">{detail}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-4 pt-8">
+                  <Button 
+                    variant="ghost" 
+                    disabled={activeStep === 0}
+                    onClick={() => setActiveStep(prev => prev - 1)}
+                    leftIcon={<ArrowLeft size={18} />}
+                  >
+                    Previous
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    disabled={activeStep === steps.length - 1}
+                    onClick={() => setActiveStep(prev => prev + 1)}
+                    rightIcon={<ArrowRight size={18} />}
+                  >
+                    Next Step
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Key Features */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black text-white text-center">Why UniPulse is Different</h2>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center space-y-3">
-              <div className="text-4xl">⚡</div>
-              <div className="text-sm font-bold text-white">No Login Required</div>
-              <div className="text-xs text-slate-400">Vote instantly. No accounts, no friction.</div>
-            </div>
-
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center space-y-3">
-              <div className="text-4xl">🔴</div>
-              <div className="text-sm font-bold text-white">Real-Time Updates</div>
-              <div className="text-xs text-slate-400">See rankings shift live as votes come in.</div>
-            </div>
-
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center space-y-3">
-              <div className="text-4xl">🔒</div>
-              <div className="text-sm font-bold text-white">Anti-Bias Design</div>
-              <div className="text-xs text-slate-400">Results hidden until you vote honestly.</div>
-            </div>
-
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center space-y-3">
-              <div className="text-4xl">🎓</div>
-              <div className="text-sm font-bold text-white">Student Truth</div>
-              <div className="text-xs text-slate-400">Real opinions, not marketing BS.</div>
-            </div>
-          </div>
+        <section className="text-center py-12 border-t border-slate-800/50">
+          <h2 className="text-2xl font-bold text-white mb-6">Ready to contribute to the engine?</h2>
+          <Button size="lg" variant="neon" onClick={() => window.location.href = '/'}>
+            Start Now
+          </Button>
         </section>
 
-        {/* FAQ */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black text-white text-center">Frequently Asked Questions</h2>
-          
-          <div className="space-y-4">
-            {[
-              { q: 'Do I need to create an account?', a: 'Nope! UniPulse is completely anonymous. Just vote and go.' },
-              { q: 'Can I change my vote?', a: 'No - votes are final to prevent manipulation. Think carefully before voting!' },
-              { q: 'How do you prevent spam?', a: 'We use device fingerprinting and IP tracking (anonymously) to allow only one vote per poll.' },
-              { q: 'Are the results biased?', a: 'Results are hidden until you vote to prevent bias. We only show real student opinions.' },
-              { q: 'When will AI matching launch?', a: 'We\'re collecting honest data first. Expected launch: Post-February 2026.' },
-              { q: 'Can universities manipulate rankings?', a: 'No. Only verified students/alumni votes count. We have anti-spam protection.' },
-            ].map((faq, index) => (
-              <details key={index} className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 group">
-                <summary className="cursor-pointer text-sm font-bold text-white flex items-center justify-between">
-                  {faq.q}
-                  <span className="text-cyan-400 group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <div className="mt-4 text-sm text-slate-400 leading-relaxed">
-                  {faq.a}
-                </div>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="text-center space-y-6 py-12">
-          <h2 className="text-3xl font-black text-white">Ready to Start?</h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">
-            It takes less than 5 minutes to vote in a category. Your honest opinion helps thousands of students.
-          </p>
-          <a
-            href="/"
-            className="inline-block px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl text-white font-bold text-lg transition-all transform hover:scale-105"
-          >
-            🗳️ Start Voting Now
-          </a>
-        </section>
-
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   );
-}
+};

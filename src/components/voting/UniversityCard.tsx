@@ -63,7 +63,11 @@ export const UniversityCard: React.FC<UniversityCardProps> = ({
         <div onClick={(e) => e.stopPropagation()}>
           <VoteButton 
             state={voteState} 
-            onClick={onVote} 
+            // FIX: If onVote isn't passed or doesn't work, fall back to onSelect
+            onClick={() => {
+              if (onVote) onVote();
+              else onSelect();
+            }} 
             className={isSelected ? 'bg-blue-600 border-blue-500 text-white' : ''}
           />
         </div>

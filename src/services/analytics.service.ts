@@ -1,5 +1,6 @@
 // ============================================================================
-// ANALYTICS SERVICE - PHASE 2 PRODUCTION
+// ANALYTICS SERVICE - PHASE 2 PRODUCTION (FULLY RESTORED)
+// Provides insights, trends, and aggregate data
 // ============================================================================
 
 import { 
@@ -13,7 +14,7 @@ import {
   type UniversityLeaderboardEntry,
   type RecentActivity,
 } from './database.service';
-import type { PollCategory } from '../types/models';
+import type { PollCategory, PollResult } from '../types/models';
 import { supabase } from '../lib/supabase';
 
 // ============================================================================
@@ -56,7 +57,7 @@ export async function getTopTrendingPolls(limit = 10): Promise<DatabaseResponse<
     const response = await getTrendingPolls();
     if (!response.success || !response.data) return response;
     return { success: true, data: response.data.slice(0, limit), error: null };
-  } catch{
+  } catch {
     return { success: false, data: null, error: 'Failed to fetch trending polls' };
   }
 }
@@ -67,7 +68,7 @@ export async function getUniversityRankings(limit?: number): Promise<DatabaseRes
     if (!response.success || !response.data) return response;
     const rankings = limit ? response.data.slice(0, limit) : response.data;
     return { success: true, data: rankings, error: null };
-  } catch {
+  } catch{
     return { success: false, data: null, error: 'Failed to fetch rankings' };
   }
 }
@@ -93,6 +94,41 @@ export async function getLatestVotes(limit = 50): Promise<DatabaseResponse<Recen
 // ============================================================================
 // CATEGORY ANALYTICS
 // ============================================================================
+/**
+ * PRODUCTION-READY: Fetch all results for an entire category in one hit.
+ * Strictly typed to avoid "any" errors.
+ */
+export async function getCategoryResults(category: PollCategory): Promise<DatabaseResponse<PollResult[]>> {
+  try {
+    const { data, error } = await supabase
+      .from('poll_results')
+      .select('*')
+      .eq('category', category)
+      .order('poll_id');
+
+    if (error) throw error;
+
+    const results: PollResult[] = (data || []).map(r => ({
+      pollId: r.poll_id,
+      pollQuestion: r.poll_question,
+      category: r.category as PollCategory,
+      cycleMonth: r.cycle_month,
+      universityId: r.university_id,
+      universityName: r.university_name,
+      universityShortName: r.university_short_name,
+      universityColor: r.university_color,
+      universityType: r.university_type as 'Public' | 'Private',
+      votes: r.votes,
+      percentage: r.percentage,
+      rank: r.rank,
+    }));
+
+    return { success: true, data: results, error: null };
+  } catch (err) {
+    console.error('[Analytics] Category fetch failed:', err);
+    return { success: false, data: null, error: 'Failed to fetch sector results' };
+  }
+}
 
 export async function getCategoryStats(): Promise<DatabaseResponse<CategoryStats[]>> {
   try {
@@ -100,12 +136,39 @@ export async function getCategoryStats(): Promise<DatabaseResponse<CategoryStats
     if (!response.success || !response.data) return { success: false, data: null, error: response.error };
     const total = response.data.reduce((sum, cat) => sum + cat.count, 0);
     const stats: CategoryStats[] = response.data.map((cat) => ({
-      ...cat,
+      category: cat.category as PollCategory,
+      count: cat.count,
       percentage: total > 0 ? (cat.count / total) * 100 : 0,
     }));
     return { success: true, data: stats, error: null };
   } catch {
     return { success: false, data: null, error: 'Failed to calculate category stats' };
+  }
+}
+
+/** RESTORED: Find most active category based on current vote volume */
+export async function getMostActiveCategory(): Promise<DatabaseResponse<PollCategory>> {
+  try {
+    const trendingResponse = await getTrendingPolls();
+    if (!trendingResponse.success || !trendingResponse.data || trendingResponse.data.length === 0) {
+      return { success: false, data: null, error: 'No data available' };
+    }
+    const categoryVotes = new Map<PollCategory, number>();
+    trendingResponse.data.forEach((poll) => {
+      const category = poll.category as PollCategory;
+      const current = categoryVotes.get(category) || 0;
+      categoryVotes.set(category, current + poll.total_votes);
+    });
+    let maxVotes = 0;
+    let topCategory: PollCategory | null = null;
+    categoryVotes.forEach((votes, category) => {
+      if (votes > maxVotes) { maxVotes = votes; topCategory = category; }
+    });
+    return topCategory 
+      ? { success: true, data: topCategory, error: null }
+      : { success: false, data: null, error: 'Calculation failed' };
+  } catch {
+    return { success: false, data: null, error: 'Failed to find active category' };
   }
 }
 
@@ -131,8 +194,22 @@ export async function getMostCompetitiveCategories(limit = 3): Promise<DatabaseR
   }
 }
 
+/** RESTORED: Get categories that are currently "Trending" in the DB */
+export async function getTrendingCategories(): Promise<DatabaseResponse<PollCategory[]>> {
+  try {
+    const response = await getCategoryInsights();
+    if (!response.success || !response.data) return { success: false, data: null, error: response.error };
+    const trending = response.data
+      .filter((item) => item.is_trending)
+      .map((item) => item.category as PollCategory);
+    return { success: true, data: trending, error: null };
+  } catch {
+    return { success: false, data: null, error: 'Failed to fetch trending categories' };
+  }
+}
+
 // ============================================================================
-// PLATFORM STATISTICS
+// PLATFORM STATISTICS & ENGAGEMENT
 // ============================================================================
 
 export async function getPlatformStats(): Promise<DatabaseResponse<PlatformStats>> {
@@ -153,13 +230,86 @@ export async function getPlatformStats(): Promise<DatabaseResponse<PlatformStats
   }
 }
 
+/** RESTORED: Calculate engagement metrics */
+export async function getEngagementMetrics(): Promise<DatabaseResponse<EngagementMetrics>> {
+  try {
+    const [trendingRes, leaderboardRes] = await Promise.all([getTrendingPolls(), getUniversityLeaderboard()]);
+    const trending = trendingRes.success ? trendingRes.data || [] : [];
+    const leaderboard = leaderboardRes.success ? leaderboardRes.data || [] : [];
+    if (trending.length === 0) {
+      return { success: true, data: { averageVotesPerPoll: 0, averageVotesPerUniversity: 0, mostPopularPoll: null, leastPopularPoll: null }, error: null };
+    }
+    const totalVotes = trending.reduce((sum, poll) => sum + poll.total_votes, 0);
+    const totalUniVotes = leaderboard.reduce((sum, uni) => sum + uni.total_votes_received, 0);
+    const sortedByVotes = [...trending].sort((a, b) => b.total_votes - a.total_votes);
+    return {
+      success: true,
+      data: {
+        averageVotesPerPoll: Math.round((totalVotes / trending.length) * 100) / 100,
+        averageVotesPerUniversity: leaderboard.length > 0 ? Math.round((totalUniVotes / leaderboard.length) * 100) / 100 : 0,
+        mostPopularPoll: sortedByVotes[0] || null,
+        leastPopularPoll: sortedByVotes[sortedByVotes.length - 1] || null,
+      },
+      error: null,
+    };
+  } catch {
+    return { success: false, data: null, error: 'Failed to calculate engagement' };
+  }
+}
+
+/** RESTORED: Get the poll with the most recent vote */
+export async function getHottestPoll(): Promise<DatabaseResponse<TrendingPoll>> {
+  try {
+    const response = await getTrendingPolls();
+    if (!response.success || !response.data || response.data.length === 0) return { success: false, data: null, error: 'No polls' };
+    const sorted = [...response.data].sort((a, b) => new Date(b.last_vote_time).getTime() - new Date(a.last_vote_time).getTime());
+    return { success: true, data: sorted[0], error: null };
+  } catch {
+    return { success: false, data: null, error: 'Failed to find hottest poll' };
+  }
+}
+
 // ============================================================================
-// UTILITY FUNCTIONS
+// --- ADVANCED POLL DATA (For PollDetailPage) ---
+// ============================================================================
+
+export async function getPollVoteHistory(pollId: string, days = 30): Promise<DatabaseResponse<{ label: string; value: number }[]>> {
+  try {
+    const { data, error } = await supabase.rpc('get_daily_vote_counts', { p_poll_id: pollId, p_days: days });
+    if (error) return { success: false, data: null, error: error.message };
+    const chartData = (data || []).map(item => ({
+      label: new Date(item.vote_day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: item.vote_count,
+    }));
+    return { success: true, data: chartData, error: null };
+  } catch {
+    return { success: false, data: null, error: 'Failed to fetch history' };
+  }
+}
+
+export async function getPollVoterDemographics(pollId: string): Promise<DatabaseResponse<{ label: string; value: number; color: string }[]>> {
+  try {
+    const { data, error } = await supabase.rpc('get_voter_demographics', { p_poll_id: pollId });
+    if (error) return { success: false, data: null, error: error.message };
+    const colorMap: Record<string, string> = { student: '#3b82f6', alumni: '#8b5cf6', applicant: '#10b981', other: '#64748b' };
+    const chartData = (data || []).map(item => ({
+      label: item.voter_type ? (item.voter_type.charAt(0).toUpperCase() + item.voter_type.slice(1)) : 'Other',
+      value: item.count,
+      color: colorMap[item.voter_type] || colorMap['other'],
+    }));
+    return { success: true, data: chartData, error: null };
+  } catch {
+    return { success: false, data: null, error: 'Failed to fetch demographics' };
+  }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS (RESTORED)
 // ============================================================================
 
 export function formatNumber(num: number): string {
-  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
-  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
   return num.toString();
 }
 
@@ -173,80 +323,37 @@ export function timeAgo(dateString: string): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-// ============================================================================
-// --- ADDED FOR POLL DETAIL PAGE ---
-// ============================================================================
-
-/**
- * Get historical daily vote counts for a specific poll to power trend charts.
- * This calls a Supabase RPC function.
- */
-export async function getPollVoteHistory(
-  pollId: string,
-  days = 30
-): Promise<DatabaseResponse<{ label: string; value: number }[]>> {
-  try {
-    const { data, error } = await supabase.rpc('get_daily_vote_counts', {
-      p_poll_id: pollId,
-      p_days: days,
-    });
-
-    if (error) {
-      console.error('[Analytics] Error fetching poll history:', error);
-      return { success: false, data: null, error: error.message };
-    }
-
-    const chartData = (data || []).map(item => ({
-      label: new Date(item.vote_day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      value: item.vote_count,
-    }));
-
-    return { success: true, data: chartData, error: null };
-  } catch (err) {
-    console.error('[Analytics] Unexpected error in getPollVoteHistory:', err);
-    return { success: false, data: null, error: 'Failed to fetch poll history' };
-  }
+/** RESTORED: Simple percentage formatter */
+export function formatPercentage(num: number, decimals = 1): string {
+  return `${num.toFixed(decimals)}%`;
 }
 
-/**
- * Get the breakdown of voter types (student, alumni, etc.) for a specific poll.
- * This calls a Supabase RPC function.
- */
-export async function getPollVoterDemographics(
-  pollId: string
-): Promise<DatabaseResponse<{ label: string; value: number; color: string }[]>> {
-  try {
-    const { data, error } = await supabase.rpc('get_voter_demographics', {
-      p_poll_id: pollId,
-    });
+/** RESTORED: Get UI color for competition badges */
+export function getCompetitionLevelColor(level: 'high' | 'medium' | 'low'): string {
+  const colors = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' };
+  return colors[level];
+}
 
-    if (error) {
-      console.error('[Analytics] Error fetching demographics:', error);
-      return { success: false, data: null, error: error.message };
-    }
+/** RESTORED: Get readable label for competition */
+export function getCompetitionLevelLabel(level: 'high' | 'medium' | 'low'): string {
+  const labels = { high: 'Highly Competitive', medium: 'Moderately Competitive', low: 'Less Competitive' };
+  return labels[level];
+}
 
-    const colorMap: Record<string, string> = {
-      student: '#3b82f6',   // blue
-      alumni: '#8b5cf6',   // purple
-      applicant: '#10b981', // green
-      other: '#64748b',    // slate
-    };
+/** RESTORED: Calculate change between two periods */
+export function calculatePercentageChange(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+}
 
-    const chartData = (data || []).map(item => ({
-      label: item.voter_type ? (item.voter_type.charAt(0).toUpperCase() + item.voter_type.slice(1)) : 'Other',
-      value: item.count,
-      color: colorMap[item.voter_type] || colorMap['other'],
-    }));
-
-    return { success: true, data: chartData, error: null };
-  } catch (err) {
-    console.error('[Analytics] Unexpected error in getPollVoterDemographics:', err);
-    return { success: false, data: null, error: 'Failed to fetch demographics' };
-  }
+/** RESTORED: Formatted sign (+/-) percentage */
+export function formatPercentageChange(change: number): string {
+  const sign = change > 0 ? '+' : '';
+  return `${sign}${change.toFixed(1)}%`;
 }
 
 // ============================================================================
-// EXPORT ALL (Make sure to include new functions)
+// EXPORT ALL
 // ============================================================================
 
 export default {
@@ -255,11 +362,19 @@ export default {
   getTopThreeUniversities,
   getLatestVotes,
   getCategoryStats,
+  getMostActiveCategory,
   getMostCompetitiveCategories,
+  getTrendingCategories,
   getPlatformStats,
-  formatNumber,
-  timeAgo,
-  // Added functions
+  getEngagementMetrics,
+  getHottestPoll,
   getPollVoteHistory,
   getPollVoterDemographics,
+  formatNumber,
+  timeAgo,
+  formatPercentage,
+  getCompetitionLevelColor,
+  getCompetitionLevelLabel,
+  calculatePercentageChange,
+  formatPercentageChange,
 };

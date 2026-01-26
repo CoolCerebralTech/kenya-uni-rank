@@ -33,35 +33,30 @@ export async function getUniversityProfile(
 
     if (error) {
       console.error('[Insights] Error fetching university profile:', error);
-      return {
-        success: false,
-        data: null,
-        error: error.message,
-      };
+      return { success: false, data: null, error: error.message };
     }
 
+    // NEW: Handle the "No Votes Yet" case gracefully
     if (!data || data.length === 0) {
       return {
-        success: false,
-        data: null,
-        error: 'No data available for this university',
+        success: true, // Mark as success so the page doesn't crash
+        data: {
+          universityId,
+          strengths: [],
+          weaknesses: [],
+          sentimentScore: 0,
+          totalVotesReceived: 0,
+          lastUpdated: new Date().toISOString(),
+        },
+        error: null,
       };
     }
 
-    // Group by category
-    const categoryPerformance = new Map<
-      PollCategory,
-      { totalRank: number; count: number; totalPercentage: number }
-    >();
-
+    // ... (rest of the mapping logic remains the same)
+    const categoryPerformance = new Map<PollCategory, { totalRank: number; count: number; totalPercentage: number }>();
     data.forEach((result) => {
       const category = result.category as PollCategory;
-      const current = categoryPerformance.get(category) || {
-        totalRank: 0,
-        count: 0,
-        totalPercentage: 0,
-      };
-
+      const current = categoryPerformance.get(category) || { totalRank: 0, count: 0, totalPercentage: 0 };
       categoryPerformance.set(category, {
         totalRank: current.totalRank + result.rank,
         count: current.count + 1,
@@ -69,49 +64,33 @@ export async function getUniversityProfile(
       });
     });
 
-    // Calculate averages
-    const categoryStats = Array.from(categoryPerformance.entries()).map(
-      ([category, stats]) => ({
-        category,
-        avgRank: stats.totalRank / stats.count,
-        avgPercentage: stats.totalPercentage / stats.count,
-        trend: 'stable' as const,
-      })
-    );
+    const categoryStats = Array.from(categoryPerformance.entries()).map(([category, stats]) => ({
+      category,
+      avgRank: stats.totalRank / stats.count,
+      avgPercentage: stats.totalPercentage / stats.count,
+      trend: 'stable' as const,
+    }));
 
-    // Sort by rank (lower is better)
     categoryStats.sort((a, b) => a.avgRank - b.avgRank);
-
     const strengths = categoryStats.slice(0, 3);
     const weaknesses = categoryStats.slice(-3).reverse();
-
     const totalVotesReceived = data.reduce((sum, item) => sum + item.votes, 0);
-    const avgPercentage =
-      data.reduce((sum, item) => sum + item.percentage, 0) / data.length;
-
-    const profile: UniversityProfile = {
-      universityId,
-      strengths,
-      weaknesses,
-      sentimentScore: Math.round(avgPercentage),
-      totalVotesReceived,
-      lastUpdated: new Date().toISOString(),
-    };
-
-    console.log('[Insights] University profile generated:', universityId);
+    const avgPercentage = data.reduce((sum, item) => sum + item.percentage, 0) / data.length;
 
     return {
       success: true,
-      data: profile,
+      data: {
+        universityId,
+        strengths,
+        weaknesses,
+        sentimentScore: Math.round(avgPercentage),
+        totalVotesReceived,
+        lastUpdated: new Date().toISOString(),
+      },
       error: null,
     };
-  } catch (err) {
-    console.error('[Insights] Unexpected error fetching profile:', err);
-    return {
-      success: false,
-      data: null,
-      error: 'Failed to generate university profile',
-    };
+  } catch {
+    return { success: false, data: null, error: 'Failed to generate profile' };
   }
 }
 

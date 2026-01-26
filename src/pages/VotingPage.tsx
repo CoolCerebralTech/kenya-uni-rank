@@ -29,7 +29,7 @@ import type { PollCategory, PollResult } from '../types/models';
 import { ArrowRight, Trophy, Zap } from 'lucide-react';
 
 export const VotingPage: React.FC = () => {
-  const { category = 'vibes' } = useParams<{ category: string }>();
+  const { category = 'general' } = useParams<{ category: string }>();
   const navigate = useNavigate();
 
   const { fingerprint, isReady: isFingerprintReady } = useFingerprint();
@@ -48,7 +48,9 @@ export const VotingPage: React.FC = () => {
 
   const universities = getAllUniversitiesSync();
   const currentPoll = polls[currentPollIndex];
+  const hasLoadedInitial = React.useRef(false);
 
+  // Logic to load specific results for a poll
   const loadPollData = useCallback(async (pollToLoad: PollWithStatus) => {
     if (!pollToLoad.userHasVoted) {
       setResults([]);
@@ -62,149 +64,208 @@ export const VotingPage: React.FC = () => {
       if (resultsRes.success && resultsRes.data) {
         setResults(resultsRes.data.results);
         setTotalVotes(resultsRes.data.totalVotes);
-      } else {
-        showErrorToast('Could not load poll results.');
       }
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsLoadingResults(false);
     }
-  }, [showErrorToast]);
+  }, []);
 
+  // Main initial load
   useEffect(() => {
+    let isMounted = true;
+
     const loadCategoryPolls = async () => {
-      setIsLoading(true);
-      const response = await getPollsForVoting(category as PollCategory);
-      
-      if (response.success && response.data) {
-        setPolls(response.data);
-        if (response.data.length > 0) {
-          const firstUnvotedIndex = response.data.findIndex(p => !p.userHasVoted);
-          const startIndex = firstUnvotedIndex !== -1 ? firstUnvotedIndex : 0;
-          setCurrentPollIndex(startIndex);
-          await loadPollData(response.data[startIndex]);
-        }
-      } else {
-        showErrorToast(response.error || 'Failed to load polls.');
+      // Only show the big spinner on the very first load
+      if (!hasLoadedInitial.current) {
+        setIsLoading(true);
       }
-      setIsLoading(false);
+      
+      try {
+        const response = await getPollsForVoting(category as PollCategory);
+        
+        if (!isMounted) return;
+
+        if (response.success && response.data) {
+          setPolls(response.data);
+          
+          // Only change index if we haven't set one yet
+          if (!hasLoadedInitial.current && response.data.length > 0) {
+            const firstUnvotedIndex = response.data.findIndex(p => !p.userHasVoted);
+            const startIndex = firstUnvotedIndex !== -1 ? firstUnvotedIndex : 0;
+            setCurrentPollIndex(startIndex);
+            await loadPollData(response.data[startIndex]);
+          }
+          
+          hasLoadedInitial.current = true; // Mark as done
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     };
 
     if (isFingerprintReady) {
       loadCategoryPolls();
     }
-  }, [category, isFingerprintReady, showErrorToast, loadPollData]);
-
-  const navigateToPoll = useCallback((index: number) => {
+    
+    return () => { isMounted = false; };
+  }, [category, isFingerprintReady, loadPollData]);
+  // Handlers
+  const navigateToPoll = (index: number) => {
     if (index >= 0 && index < polls.length) {
       setCurrentPollIndex(index);
       setSelectedUniId(null);
       setShowConfetti(false);
       loadPollData(polls[index]);
     }
-  }, [polls, loadPollData]);
+  };
 
   const handleNext = () => navigateToPoll(currentPollIndex + 1);
   const handlePrev = () => navigateToPoll(currentPollIndex - 1);
 
   const handleSelectUni = (id: string) => {
-    if (currentPoll?.userHasVoted || !isFingerprintReady) return;
+    if (currentPoll?.userHasVoted) return;
     setSelectedUniId(id);
     setIsConfirmOpen(true);
   };
 
-  const submitVote = async () => {
-    if (!selectedUniId || !currentPoll || !fingerprint) return;
-    
+   const submitVote = async () => {
+    // Debug logging
+    console.log('[Voting Flow] Confirm clicked', { 
+      selectedUniId, 
+      pollId: currentPoll?.id, 
+      fingerprint 
+    });
+
+    if (!selectedUniId || !currentPoll) {
+      showErrorToast("Please select a university first.");
+      return;
+    }
+
+    if (!fingerprint) {
+      showErrorToast("Secure ID not ready. Please wait a moment.");
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
       const response = await castVote(currentPoll.id, selectedUniId, 'student');
-
+      
       if (response.success) {
-        showSuccessToast('Vote submitted!');
+        showSuccessToast('Intelligence accepted. Decrypting standings...');
         setIsConfirmOpen(false);
         setShowConfetti(true);
 
-        setPolls(prevPolls => prevPolls.map(p => 
-          p.id === currentPoll.id ? { ...p, userHasVoted: true, userVotedFor: selectedUniId } : p
+        // Optimistically update the local poll state
+        setPolls(prev => prev.map(p => 
+          p.id === currentPoll.id 
+            ? { ...p, userHasVoted: true, userVotedFor: selectedUniId } 
+            : p
         ));
         
+        // Fetch fresh results from the "Truth Engine" (DB)
         const resultsRes = await getPollResultsById(currentPoll.id, true);
         if (resultsRes.success && resultsRes.data) {
           setResults(resultsRes.data.results);
           setTotalVotes(resultsRes.data.totalVotes);
         }
       } else {
-        showErrorToast(response.error || 'Vote failed.');
+        // This handles cases like "Already voted" or DB errors
+        showErrorToast(response.error || 'The system rejected your vote.');
       }
+    } catch (error) {
+      console.error('[Voting Flow] Fatal error:', error);
+      showErrorToast('Connection to the Truth Engine failed.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Spinner size="xl" /></div>;
+  // --- RENDERING ---
+
+  // FIX: Wrap loading in AppLayout to prevent blinking/remounting
+  if (isLoading || !isFingerprintReady) {
+    return (
+      <AppLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Spinner size="xl" variant="accent" />
+        </div>
+      </AppLayout>
+    );
   }
 
-  if (!currentPoll) {
+  if (polls.length === 0) {
     return (
       <AppLayout>
         <PageContainer>
-          <EmptyState title="No Active Battles" description={`There are no polls in the ${category} category.`} actionLabel="Return Home" onAction={() => navigate('/')} icon={<Trophy />} />
+          <EmptyState title="No Active Battles" description={`The ${category} sector is currently quiet.`} actionLabel="Go Home" onAction={() => navigate('/')} icon={<Trophy />} />
         </PageContainer>
       </AppLayout>
     );
   }
 
   const allVoted = polls.every(p => p.userHasVoted);
-  const completionPercentage = polls.length > 0 ? (polls.filter(p => p.userHasVoted).length / polls.length) * 100 : 0;
+  const completionPercentage = (polls.filter(p => p.userHasVoted).length / polls.length) * 100;
 
   return (
     <AppLayout>
-      <VoteConfetti isActive={showConfetti} color={selectedUniId ? getUniversityById(selectedUniId)?.color : undefined} />
+      <VoteConfetti isActive={showConfetti} color={selectedUniId ? (getUniversityById(selectedUniId)?.color) : undefined} />
+      
       {allVoted && (
-        <LevelUpToast category={category} xpGained={polls.length * 50} onDismiss={() => navigate('/')} onNext={() => navigate(`/results/${category}`)} />
+        <LevelUpToast category={category} onDismiss={() => navigate('/')} onNext={() => navigate(`/results/${category}`)} />
       )}
 
       <div className="max-w-3xl mx-auto px-4">
-        <PollProgress current={currentPollIndex + 1} total={polls.length} category={category} completionPercentage={completionPercentage} onBack={handlePrev} onSkip={handleNext} />
+        <PollProgress 
+          current={currentPollIndex + 1} 
+          total={polls.length} 
+          category={category} 
+          completionPercentage={completionPercentage} 
+          onBack={handlePrev} 
+          onSkip={handleNext} 
+        />
       </div>
 
       <PageContainer maxWidth="md" className="pt-4 pb-20">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-xs font-bold text-slate-400 uppercase mb-4">
             <Zap size={12} /> {currentPoll.category} Sector
           </div>
           <h1 className="text-2xl md:text-4xl font-black text-white">{currentPoll.question}</h1>
-          {currentPoll.description && <p className="text-slate-400 mt-4">{currentPoll.description}</p>}
         </div>
 
         {currentPoll.userHasVoted ? (
           <div className="space-y-6">
-            <AlreadyVotedBadge universityId={currentPoll.userVotedFor} onViewResults={() => navigate(`/poll/${currentPoll.slug}`)} />
+            {/* FIX: Ensure string | null is passed */}
+            <AlreadyVotedBadge universityId={currentPoll.userVotedFor ?? null} onViewResults={() => navigate(`/poll/${currentPoll.slug}`)} />
+            
             {isLoadingResults ? (
-              <div className="space-y-2 animate-pulse">{[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-slate-800/50 rounded-lg"></div>)}</div>
+              <div className="space-y-4 animate-pulse">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-slate-800/50 rounded-xl" />)}
+              </div>
             ) : (
-              <RaceTrack results={results} totalVotes={totalVotes} userHasVoted />
+              // FIX: Added required onVoteClick
+              <RaceTrack results={results} totalVotes={totalVotes} userHasVoted={true} onVoteClick={() => {}} />
             )}
-            <div className="flex justify-center">
+            
+            <div className="flex justify-center pt-4">
               {currentPollIndex < polls.length - 1 ? (
-                <Button variant="secondary" onClick={handleNext} rightIcon={<ArrowRight />} className="animate-pulse">Next Battle</Button>
+                <Button variant="secondary" onClick={handleNext} rightIcon={<ArrowRight />}>Next Battle</Button>
               ) : (
-                <Button variant="primary" onClick={() => navigate(`/results/${category}`)}>View Results</Button>
+                <Button variant="primary" onClick={() => navigate(`/results/${category}`)}>View Full Rankings</Button>
               )}
             </div>
           </div>
         ) : (
-          <div>
-            <UniversityGrid universities={universities} selectedId={selectedUniId} onSelect={handleSelectUni} />
-            <div className="mt-8"><LockedResultsCard onVoteClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} /></div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <UniversityGrid universities={universities} selectedId={selectedUniId} onSelect={handleSelectUni} onVote={handleSelectUni}  />
+            <div className="mt-8"><LockedResultsCard onVoteClick={() => {}} /></div>
           </div>
         )}
-
-        <div className="mt-12 text-center text-xs text-slate-600">
-          Fingerprint: {fingerprint?.substring(0, 8)}... • Cycle: {currentPoll.cycleMonth || 'Current'}
-        </div>
       </PageContainer>
 
       <VoteConfirmation 

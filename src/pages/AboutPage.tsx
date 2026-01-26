@@ -1,184 +1,85 @@
+import React from 'react';
+import { AppLayout } from '../components/layout/AppLayout';
+import { PageContainer } from '../components/layout/PageContainer';
+import { SectionDivider } from '../components/layout/SectionDivider';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { ShieldCheck, Zap, Globe, Mail, Twitter } from 'lucide-react';
 
-export function AboutPage() {
+export const AboutPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-slate-900 py-12">
-      <div className="container mx-auto px-4 max-w-4xl space-y-16">
+    <AppLayout>
+      <PageContainer maxWidth="lg" title="About UniPulse">
         
-        {/* Hero */}
-        <div className="text-center space-y-6">
-          <div className="inline-block text-7xl mb-4">🎓</div>
-          <h1 className="text-5xl font-black text-white leading-tight">
-            About UniPulse
+        {/* HERO */}
+        <div className="text-center space-y-6 mb-20">
+          <div className="inline-block p-4 rounded-3xl bg-cyan-500/10 border border-cyan-500/20 text-6xl mb-4">🎓</div>
+          <h1 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tight">
+            Real Voices. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+              Honest Rankings.
+            </span>
           </h1>
           <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-            Real student voices. Honest rankings. Better university decisions.
+            We're building the world's first Student Truth Engine to help you find your perfect university fit based on reality, not marketing.
           </p>
         </div>
 
-        {/* Mission */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black text-white">Our Mission</h2>
-          <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-2xl p-8 space-y-4">
-            <p className="text-lg text-slate-300 leading-relaxed">
-              UniPulse was born from a simple frustration: <span className="text-cyan-400 font-semibold">official university rankings don't capture the student experience</span>.
+        {/* MISSION */}
+        <section className="mb-20">
+          <SectionDivider label="The Mission" icon={<Zap size={16} />} />
+          <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 md:p-12">
+            <p className="text-xl text-slate-300 leading-relaxed italic mb-6">
+              "UniPulse was born from a simple frustration: Official university rankings tell you about research papers, but they don't tell you what it's actually like to live and learn on campus."
             </p>
-            <p className="text-lg text-slate-300 leading-relaxed">
-              We're building a platform where <span className="text-green-400 font-semibold">real students and alumni</span> share honest opinions about campus vibes, academics, sports, facilities, and social life — helping the next generation make informed decisions.
-            </p>
-            <p className="text-lg text-slate-300 leading-relaxed">
-              Our goal? To solve <span className="text-purple-400 font-semibold">"placement regrets"</span> by matching post-KCSE students with universities that fit their personal vibe, not just their grades.
+            <p className="text-lg text-slate-400">
+              We empower Kenyan students to share unfiltered sentiment across 6 categories — from the quality of WiFi to the intensity of social life — solving "placement regret" for the next generation.
             </p>
           </div>
         </section>
 
-        {/* The Problem */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black text-white">The Problem We're Solving</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-6 space-y-3">
-              <div className="text-3xl">😞</div>
-              <div className="text-sm font-bold text-red-400">Old Way (Broken)</div>
-              <ul className="text-sm text-slate-400 space-y-2">
-                <li>• Rankings based on research papers, not student life</li>
-                <li>• No insights into campus culture or vibes</li>
-                <li>• Students choose based on marketing, not reality</li>
-                <li>• High placement regret rates</li>
-              </ul>
-            </div>
-
-            <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-6 space-y-3">
-              <div className="text-3xl">✨</div>
-              <div className="text-sm font-bold text-green-400">UniPulse Way (Better)</div>
-              <ul className="text-sm text-slate-400 space-y-2">
-                <li>• Real student sentiment across 6 categories</li>
-                <li>• Anonymous, honest opinions</li>
-                <li>• Live, transparent rankings</li>
-                <li>• AI matching based on personal fit (coming soon)</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black text-white">How It Works</h2>
-          <div className="space-y-4">
-            {[
-              { step: '1', emoji: '🗳️', title: 'Vote Honestly', desc: 'Share your experience across categories like Vibes, Academics, Sports, and more. No login required.' },
-              { step: '2', emoji: '🏁', title: 'Unlock Reality', desc: 'Vote to see real-time rankings powered by student voices, not marketing departments.' },
-              { step: '3', emoji: '🤖', title: 'Get Matched (Soon)', desc: 'AI will recommend your Top 3 universities based on your preferences, not just grades.' },
-            ].map((item) => (
-              <div key={item.step} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-cyan-500/20 border border-cyan-500/30 rounded-full flex items-center justify-center text-xl font-black text-cyan-400">
-                  {item.step}
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{item.emoji}</span>
-                    <div className="text-lg font-bold text-white">{item.title}</div>
-                  </div>
-                  <div className="text-sm text-slate-400">{item.desc}</div>
-                </div>
+        {/* TRUST GRID */}
+        <div className="grid md:grid-cols-3 gap-6 mb-20">
+          {[
+            { icon: ShieldCheck, title: '100% Anonymous', desc: 'No logins. No tracking. We use fingerprinting to ensure one person, one vote.' },
+            { icon: Zap, title: 'Live Updates', desc: 'Our algorithms process votes in real-time. Standings change as the community speaks.' },
+            { icon: Globe, title: 'Built for Kenya', desc: 'Designed specifically for the local ecosystem, from JKUAT to Strathmore.' },
+          ].map((item, i) => (
+            <Card key={i} className="p-8 text-center space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-cyan-400">
+                <item.icon size={24} />
               </div>
-            ))}
-          </div>
-        </section>
+              <h3 className="text-lg font-bold text-white">{item.title}</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
+            </Card>
+          ))}
+        </div>
 
-        {/* Why Trust Us */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black text-white">Why Trust UniPulse?</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center space-y-3">
-              <div className="text-4xl">🔒</div>
-              <div className="text-sm font-bold text-white">Anonymous</div>
-              <div className="text-xs text-slate-400">No accounts. No tracking. Just honest votes.</div>
-            </div>
-
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center space-y-3">
-              <div className="text-4xl">🔴</div>
-              <div className="text-sm font-bold text-white">Live</div>
-              <div className="text-xs text-slate-400">Real-time rankings updated every vote.</div>
-            </div>
-
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center space-y-3">
-              <div className="text-4xl">🇰🇪</div>
-              <div className="text-sm font-bold text-white">For Kenyans</div>
-              <div className="text-xs text-slate-400">Built by Kenyan students, for Kenyan students.</div>
-            </div>
-          </div>
-        </section>
-
-        {/* Our Values */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black text-white">Our Values</h2>
-          <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-8 space-y-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">💯</span>
-              <div>
-                <div className="text-sm font-bold text-white">Honesty Over Hype</div>
-                <div className="text-xs text-slate-400 mt-1">We hide results until you vote to prevent bias. Real opinions, not marketing.</div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🎯</span>
-              <div>
-                <div className="text-sm font-bold text-white">Students First</div>
-                <div className="text-xs text-slate-400 mt-1">Every feature is designed to help students make better decisions, not to sell ads.</div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🚀</span>
-              <div>
-                <div className="text-sm font-bold text-white">Always Improving</div>
-                <div className="text-xs text-slate-400 mt-1">We listen to feedback and ship updates fast. This is just the beginning.</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Contact */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black text-white">Get in Touch</h2>
-          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-2xl p-8 text-center space-y-4">
-            <p className="text-slate-300">
-              Have feedback? Found a bug? Want to partner with us?
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="mailto:hello@unipulse.ke"
-                className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 rounded-xl text-white font-semibold transition-colors"
+        {/* CONTACT */}
+        <section className="mb-12">
+          <SectionDivider label="Get In Touch" />
+          <div className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-slate-800 rounded-3xl p-10 text-center">
+            <h2 className="text-2xl font-bold text-white mb-4">Have feedback or want to partner?</h2>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Button 
+                variant="secondary" 
+                leftIcon={<Mail size={18} />}
+                onClick={() => window.open('mailto:hello@unipulse.ke')}
               >
-                📧 Email Us
-              </a>
-              <a
-                href="https://twitter.com/unipulseke"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-semibold transition-colors"
+                Email HQ
+              </Button>
+              <Button 
+                variant="ghost" 
+                leftIcon={<Twitter size={18} />}
+                onClick={() => window.open('https://twitter.com/unipulseke')}
               >
-                🐦 Follow on Twitter
-              </a>
+                Twitter / X
+              </Button>
             </div>
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="text-center space-y-6 py-12">
-          <h2 className="text-3xl font-black text-white">Ready to Join the Movement?</h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">
-            Every vote makes the rankings more accurate. Help the next generation find their perfect fit.
-          </p>
-          <a
-            href="/"
-            className="inline-block px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl text-white font-bold text-lg transition-all transform hover:scale-105"
-          >
-            🏁 Start Voting Now
-          </a>
-        </section>
-
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   );
-}
+};

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 // Layout & UI
@@ -21,7 +21,7 @@ import { LockedResultsCard } from '../components/voting/LockedResultsCard';
 // Services
 import { getPollWithResults, checkIfVoted } from '../services/voting.service';
 import { getActivePolls } from '../services/poll.service';
-import { getPollVoteHistory, getPollVoterDemographics } from '../services/analytics.service'; // REAL DATA
+import { getPollVoteHistory, getPollVoterDemographics } from '../services/analytics.service';
 import { useFingerprint } from '../hooks/useFingerprint';
 import { useToast } from '../hooks/useToast';
 import type { Poll, PollResult } from '../types/models';
@@ -45,21 +45,32 @@ export const PollDetailPage: React.FC = () => {
   const [historyData, setHistoryData] = useState<{ label: string; value: number }[]>([]);
   const [demographicData, setDemographicData] = useState<{ label: string; value: number; color: string }[]>([]);
 
-  // Memoized callback to prevent re-renders
-  const loadPollData = useCallback(async () => {
-    if (!slug || !isFingerprintReady) return;
+  // 🔥 FIX: Don't memoize - just use useEffect properly
+  useEffect(() => {
+    if (!slug || !isFingerprintReady) {
+      console.log('[PollDetail] Waiting for slug or fingerprint...', { slug, isFingerprintReady });
+      return;
+    }
     
-    setIsLoading(true);
+    let isMounted = true;
+    
+    const loadPollData = async () => {
+      console.log('[PollDetail] Loading poll data for slug:', slug);
+      setIsLoading(true);
 
-    try {
-      // Fetch all critical data in parallel
+      try {
+      // 🔥 FIX: Fetch all critical data in parallel
+      // checkIfVoted now handles slug → UUID conversion internally
       const [mainRes, votedStatusRes] = await Promise.all([
         getPollWithResults(slug),
-        checkIfVoted(slug) // Assuming checkIfVoted can take a slug
+        checkIfVoted(slug) // Now accepts slugs!
       ]);
       
+      console.log('[PollDetail] Main response:', mainRes);
+      console.log('[PollDetail] Voted status:', votedStatusRes);
+
       if (!mainRes.success || !mainRes.data || !mainRes.data.poll) {
-        throw new Error('Poll not found');
+        throw new Error(mainRes.error || 'Poll not found');
       }
 
       const currentPoll = mainRes.data.poll;
@@ -68,44 +79,83 @@ export const PollDetailPage: React.FC = () => {
       setTotalVotes(mainRes.data.totalVotes || 0);
       setHasVoted(votedStatusRes);
 
-      // Fetch non-critical data after main content is ready
-      if (votedStatusRes) {
+      console.log('[PollDetail] Poll loaded:', currentPoll.question);
+      console.log('[PollDetail] Has voted:', votedStatusRes);
+
+      // Fetch non-critical data after main content is ready (only if voted)
+      if (votedStatusRes && currentPoll) {
+        console.log('[PollDetail] Fetching analytics data...');
         const [historyRes, demographicsRes] = await Promise.all([
           getPollVoteHistory(currentPoll.id),
           getPollVoterDemographics(currentPoll.id)
         ]);
-        if (historyRes.success) setHistoryData(historyRes.data || []);
-        if (demographicsRes.success) setDemographicData(demographicsRes.data || []);
+        
+        if (historyRes.success && historyRes.data) {
+          console.log('[PollDetail] History data loaded:', historyRes.data.length, 'points');
+          setHistoryData(historyRes.data);
+        }
+        
+        if (demographicsRes.success && demographicsRes.data) {
+          console.log('[PollDetail] Demographics loaded:', demographicsRes.data.length, 'segments');
+          setDemographicData(demographicsRes.data);
+        }
       }
       
       // Fetch related polls
-      const relatedRes = await getActivePolls(currentPoll.category);
-      if (relatedRes.success && relatedRes.data) {
-        const others = relatedRes.data.filter(p => p.id !== currentPoll.id).slice(0, 3);
-        const relatedData = await Promise.all(
-          others.map(async (p) => {
-            const res = await getPollWithResults(p.slug);
-            return { poll: p, results: res.data?.results || [] };
-          })
-        );
-        setRelatedPolls(relatedData);
+      if (currentPoll) {
+        console.log('[PollDetail] Fetching related polls in category:', currentPoll.category);
+        const relatedRes = await getActivePolls(currentPoll.category);
+        
+        if (relatedRes.success && relatedRes.data) {
+          const others = relatedRes.data
+            .filter(p => p.id !== currentPoll.id)
+            .slice(0, 3);
+          
+          console.log('[PollDetail] Found', others.length, 'related polls');
+          
+          const relatedData = await Promise.all(
+            others.map(async (p) => {
+              const res = await getPollWithResults(p.slug);
+              return { 
+                poll: p, 
+                results: res.data?.results || [] 
+              };
+            })
+          );
+          
+          setRelatedPolls(relatedData);
+        }
       }
 
     } catch (error) {
-      showErrorToast((error as Error).message || 'Failed to load poll data');
-      navigate('/404');
+      console.error('[PollDetail] Error loading poll:', error);
+      if (isMounted) {
+        showErrorToast((error as Error).message || 'Failed to load poll data');
+        navigate('/404');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
     }
-  }, [slug, isFingerprintReady, navigate, showErrorToast]);
-
-  useEffect(() => {
-    loadPollData();
-  }, [loadPollData]);
-
-  const handleVoteClick = () => {
-    if (poll) navigate(`/vote/${poll.category}`);
   };
+
+    loadPollData();
+
+    return () => { 
+      isMounted = false;
+    };
+  }, [slug, isFingerprintReady]); // 🔥 FIX: Only depend on slug and fingerprint
+
+  const handleVoteClick = useCallback(() => {
+    if (poll) {
+      console.log('[PollDetail] Navigating to vote page:', poll.category);
+      navigate(`/vote/${poll.category}`);
+    }
+  }, [poll, navigate]);
+
+  // Memoize expensive computations
+  const shouldShowAnalytics = useMemo(() => {
+    return hasVoted && results.length > 0;
+  }, [hasVoted, results.length]);
 
   if (isLoading || !poll) {
     return (
@@ -121,7 +171,10 @@ export const PollDetailPage: React.FC = () => {
         
         {/* HEADER */}
         <div className="mb-8">
-          <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white flex items-center gap-2 mb-4 text-sm">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="text-slate-400 hover:text-white flex items-center gap-2 mb-4 text-sm transition-colors"
+          >
             <ArrowLeft size={16} /> Back
           </button>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -132,7 +185,15 @@ export const PollDetailPage: React.FC = () => {
             </div>
             <div className="flex gap-2 shrink-0">
               <ShareButton title={poll.question} />
-              {!hasVoted && <Button variant="primary" onClick={handleVoteClick} leftIcon={<Vote size={16} />}>Vote Now</Button>}
+              {!hasVoted && (
+                <Button 
+                  variant="primary" 
+                  onClick={handleVoteClick} 
+                  leftIcon={<Vote size={16} />}
+                >
+                  Vote Now
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -154,24 +215,44 @@ export const PollDetailPage: React.FC = () => {
         {/* MAIN RACE TRACK */}
         <div className="mb-12">
           {hasVoted ? (
-            <RaceTrack results={results} totalVotes={totalVotes} userHasVoted />
+            <RaceTrack 
+              results={results} 
+              totalVotes={totalVotes} 
+              userHasVoted={true}
+            />
           ) : (
             <LockedResultsCard onVoteClick={handleVoteClick} />
           )}
         </div>
 
         {/* INSIGHTS (ONLY IF VOTED) */}
-        {hasVoted && results.length > 0 && (
+        {shouldShowAnalytics && (
           <div>
             <SectionDivider label="Deep Dive Analysis" icon={<Info size={16} />} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
               <Card className="lg:col-span-2">
-                <h3 className="font-bold text-white flex items-center gap-2 mb-4"><TrendingUp /> Voting Momentum</h3>
-                <TrendChart data={historyData} />
+                <h3 className="font-bold text-white flex items-center gap-2 mb-4">
+                  <TrendingUp size={18} /> Voting Momentum
+                </h3>
+                {historyData.length > 0 ? (
+                  <TrendChart data={historyData} />
+                ) : (
+                  <div className="h-48 flex items-center justify-center text-slate-500 text-sm">
+                    Not enough data yet
+                  </div>
+                )}
               </Card>
               <Card>
-                <h3 className="font-bold text-white flex items-center gap-2 mb-4"><Users /> Voter Types</h3>
-                <PieChart data={demographicData} size={180} />
+                <h3 className="font-bold text-white flex items-center gap-2 mb-4">
+                  <Users size={18} /> Voter Types
+                </h3>
+                {demographicData.length > 0 ? (
+                  <PieChart data={demographicData} size={180} />
+                ) : (
+                  <div className="h-48 flex items-center justify-center text-slate-500 text-sm">
+                    Collecting data...
+                  </div>
+                )}
               </Card>
             </div>
           </div>
@@ -182,18 +263,30 @@ export const PollDetailPage: React.FC = () => {
           <div>
             <SectionDivider label="Related Battles" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {relatedPolls.map(({ poll, results }) => (
-                <MiniRacePreview key={poll.id} slug={poll.slug} question={poll.question} results={results} totalVotes={results.reduce((sum, r) => sum + r.votes, 0)} />
+              {relatedPolls.map(({ poll: relatedPoll, results: relatedResults }) => (
+                <MiniRacePreview 
+                  key={relatedPoll.id} 
+                  slug={relatedPoll.slug} 
+                  question={relatedPoll.question} 
+                  results={relatedResults} 
+                  totalVotes={relatedResults.reduce((sum, r) => sum + r.votes, 0)} 
+                />
               ))}
             </div>
           </div>
         )}
 
+        {/* CTA SECTION */}
         <div className="mt-16 text-center">
-            <p className="text-slate-400 mb-4">{hasVoted ? "Want to influence other categories?" : "Your vote helps thousands of students."}</p>
-            <Button variant="primary" onClick={() => navigate(hasVoted ? '/polls' : `/vote/${poll.category}`)}>
-              {hasVoted ? "Find More Battles" : "Cast Your Vote Now"}
-            </Button>
+          <p className="text-slate-400 mb-4">
+            {hasVoted ? "Want to influence other categories?" : "Your vote helps thousands of students."}
+          </p>
+          <Button 
+            variant="primary" 
+            onClick={() => navigate(hasVoted ? '/polls' : `/vote/${poll.category}`)}
+          >
+            {hasVoted ? "Find More Battles" : "Cast Your Vote Now"}
+          </Button>
         </div>
       </PageContainer>
     </AppLayout>

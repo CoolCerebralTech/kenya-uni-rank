@@ -5,7 +5,7 @@ import { Home, Trophy, BarChart2, Vote } from 'lucide-react';
 export const NavigationBar: React.FC = () => {
   const navItems = [
     { name: 'Home', icon: Home, path: '/' },
-    { name: 'Vote', icon: Vote, path: '/voting' },
+    { name: 'Vote', icon: Vote, path: '/polls' }, // Fix: Pointing to /polls listing instead of non-existent /voting
     { name: 'Results', icon: BarChart2, path: '/results' },
     { name: 'Rankings', icon: Trophy, path: '/leaderboard' },
   ];
@@ -23,16 +23,18 @@ export const NavigationBar: React.FC = () => {
               ${isActive ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}
             `}
           >
-            {({ isActive }) => (
-              <>
-                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] font-bold tracking-wide uppercase">{item.name}</span>
-                {/* FIX: Moved the conditional rendering to a simpler format */}
-                {isActive && (
-                  <div className="absolute top-1.5 w-10 h-1 bg-cyan-400 rounded-b-full shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
-                )}
-              </>
-            )}
+            <item.icon size={22} strokeWidth={2} />
+            <span className="text-[10px] font-bold tracking-wide uppercase">{item.name}</span>
+            
+            {/* The active indicator bar */}
+            <NavLink
+              to={item.path}
+              className={({ isActive }) => 
+                isActive 
+                  ? "absolute top-0 w-10 h-1 bg-cyan-400 rounded-b-full shadow-[0_0_10px_rgba(34,211,238,0.5)]" 
+                  : "hidden"
+              }
+            />
           </NavLink>
         ))}
       </div>
