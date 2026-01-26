@@ -1,9 +1,11 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 
+// FIX: Added the optional 'disabled' property to the interface
 interface Option {
   value: string;
   label: string;
+  disabled?: boolean; 
 }
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -36,7 +38,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             {...props}
           >
             {options.map((option) => (
-              <option key={option.value} value={option.value}>
+              <option 
+                key={option.value} 
+                value={option.value}
+                // FIX: Apply the disabled attribute to the HTML option element
+                disabled={option.disabled} 
+              >
                 {option.label}
               </option>
             ))}

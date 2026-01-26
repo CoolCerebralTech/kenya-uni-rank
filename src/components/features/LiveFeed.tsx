@@ -1,9 +1,7 @@
-// src/components/features/LiveFeed.tsx
 import React, { useEffect, useState } from 'react';
 import { Card } from '../ui/Card';
 import { Activity } from 'lucide-react';
-import { getLatestVotes } from '../../services/analytics.service';
-import { timeAgo } from '../../services/analytics.service';
+import { getLatestVotes, timeAgo } from '../../services/analytics.service';
 import { RacingSkeleton } from '../ui/RacingSkeleton';
 
 interface LiveVoteActivity {
@@ -29,7 +27,9 @@ export const LiveFeed: React.FC = () => {
         if (response.success && response.data) {
           // Map database response to component format
           const formattedActivities = response.data.map((item, index) => ({
-            id: item.university_id + item.created_at + index,
+            // FIXED: 'university_id' does not exist in RecentActivity type. 
+            // We create a unique ID using the index and timestamp.
+            id: `vote-${index}-${new Date(item.created_at).getTime()}`,
             universityShortName: item.university_short_name,
             universityColor: item.university_color,
             category: item.category,

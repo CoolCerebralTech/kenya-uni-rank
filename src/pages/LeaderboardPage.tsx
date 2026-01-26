@@ -16,8 +16,7 @@ import { StatCard } from '../components/analytics/StatCard';
 // Services & Data
 import { getUniversityRankings, getPlatformStats } from '../services/analytics.service';
 import type { UniversityLeaderboardEntry } from '../services/database.service';
-import type { PollResult } from '../types/models'; // For type mapping
- // For type mapping
+import type { PollResult } from '../types/models'; 
 import { Trophy, Crown, Filter, ArrowUpRight } from 'lucide-react';
 
 export const LeaderboardPage: React.FC = () => {
@@ -82,11 +81,10 @@ export const LeaderboardPage: React.FC = () => {
   });
 
   // 3. Map for Podium (Top 3)
-  // PodiumView expects PollResult interface, so we map our leaderboard entry to it visually
   const podiumData: PollResult[] = sortedData.slice(0, 3).map((entry, index) => ({
     pollId: 'leaderboard',
     pollQuestion: 'Overall Ranking',
-    category: 'general',
+    category: 'general', // Assuming 'general' is valid or cast as PollCategory if strict
     cycleMonth: 'Current',
     universityId: entry.id,
     universityName: entry.name,
@@ -94,7 +92,7 @@ export const LeaderboardPage: React.FC = () => {
     universityColor: entry.color,
     universityType: entry.type,
     votes: entry.total_votes_received,
-    percentage: 0, // Not needed for podium visual if we override
+    percentage: 0, 
     rank: index + 1
   }));
 
@@ -104,7 +102,7 @@ export const LeaderboardPage: React.FC = () => {
     const isTop3 = index < 3;
     const rank = index + 1;
     
-    // Simulate trend data (Random for demo, real backend would provide previous_rank)
+    // Simulate trend data
     const trend = index % 5 === 0 ? 'up' : index % 3 === 0 ? 'down' : 'stable';
     
     return (
@@ -255,7 +253,8 @@ export const LeaderboardPage: React.FC = () => {
                 { label: 'Gold Medals', value: 'wins' }
               ]}
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              // FIXED: Cast to specific union type instead of 'any'
+              onChange={(e) => setSortBy(e.target.value as 'votes' | 'wins')}
               className="w-40"
             />
           </div>

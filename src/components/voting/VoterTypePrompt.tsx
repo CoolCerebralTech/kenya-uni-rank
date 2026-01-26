@@ -35,7 +35,9 @@ export const VoterTypePrompt: React.FC = () => {
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-500" />
         
         <button 
+          type="button"
           onClick={handleDismiss}
+          aria-label="Dismiss voter type prompt"
           className="absolute top-2 right-2 text-slate-500 hover:text-white"
         >
           <X size={16} />
@@ -48,6 +50,7 @@ export const VoterTypePrompt: React.FC = () => {
 
         <div className="grid grid-cols-2 gap-2">
           <button 
+            type="button"
             onClick={() => handleSelect('student')}
             className="flex flex-col items-center justify-center p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors gap-1 group"
           >
@@ -56,6 +59,7 @@ export const VoterTypePrompt: React.FC = () => {
           </button>
           
           <button 
+            type="button"
             onClick={() => handleSelect('alumni')}
             className="flex flex-col items-center justify-center p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors gap-1 group"
           >
@@ -64,6 +68,7 @@ export const VoterTypePrompt: React.FC = () => {
           </button>
 
           <button 
+            type="button"
             onClick={() => handleSelect('applicant')}
             className="flex flex-col items-center justify-center p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors gap-1 group"
           >
@@ -72,6 +77,7 @@ export const VoterTypePrompt: React.FC = () => {
           </button>
 
           <button 
+            type="button"
             onClick={() => handleSelect('other')}
             className="flex flex-col items-center justify-center p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors gap-1 group"
           >

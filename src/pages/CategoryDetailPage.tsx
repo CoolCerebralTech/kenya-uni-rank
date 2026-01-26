@@ -20,20 +20,35 @@ import { ShareButton } from '../components/results/ShareButton';
 import { getActivePolls } from '../services/poll.service';
 import { getTopUniversitiesInCategory } from '../services/insights.service';
 import { getPollWithResults, checkIfVoted } from '../services/voting.service';
+
+// Types
 import type {
     PollCategory,
     PollResult,
     Poll
 } from '../types/models';
+
 import { 
   getCategoryColor, 
   getCategoryDescription,
   CATEGORY_LABELS 
 } from '../services/poll.service';
-import { ArrowRight, Flame, Trophy, Info } from 'lucide-react';
 
-// Helper to get icon (since service might return string or component, forcing a lookup here for safety)
-import { Zap, BookOpen, Trophy as TrophyIcon, Users, Building2, GraduationCap } from 'lucide-react';
+import { 
+  ArrowRight, Flame, Trophy, Info, 
+  Zap, BookOpen, Trophy as TrophyIcon, Users, Building2, GraduationCap 
+} from 'lucide-react';
+
+// --- INTERFACES ---
+
+// Matches the return type from getTopUniversitiesInCategory in insights.service.ts
+interface TopUniversityData {
+  universityId: string;
+  universityName: string;
+  universityColor: string;
+  avgPercentage: number;
+  pollsWon: number;
+}
 
 const CategoryIcons: Record<string, React.ElementType> = {
   general: GraduationCap,
@@ -52,11 +67,12 @@ export const CategoryDetailPage: React.FC = () => {
   // --- STATE ---
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<{
-    topUnis: any[]; // Podium data
+    topUnis: TopUniversityData[]; 
     totalVotes: number;
     mostCompetitive: { poll: Poll; results: PollResult[] } | null;
     trendingPolls: Poll[];
   } | null>(null);
+  
   const [userHasVotedInSector, setUserHasVotedInSector] = useState(false);
 
   // --- DATA LOADING ---
@@ -74,14 +90,12 @@ export const CategoryDetailPage: React.FC = () => {
         if (pollsRes.success && pollsRes.data) {
           const polls = pollsRes.data;
           
-          // Check if user voted in at least one
-          // In real app, optimize this to not check every single one individually
+          // Check if user voted in at least one (Top 3 check for efficiency)
           const voteChecks = await Promise.all(polls.slice(0, 3).map(p => checkIfVoted(p.id)));
           const hasVotedAny = voteChecks.some(v => v);
           setUserHasVotedInSector(hasVotedAny);
 
           // 3. Find "Most Competitive" (Mock logic: just pick first one for demo)
-          // Real logic: find poll with smallest gap between 1st and 2nd
           let competitiveData = null;
           if (polls.length > 0) {
             const compPoll = polls[0];
@@ -96,8 +110,8 @@ export const CategoryDetailPage: React.FC = () => {
 
           // 4. Set State
           setStats({
-            topUnis: topUnisRes.data || [], // Would need mapping to PollResult format for Podium
-            totalVotes: 15420, // Mock total
+            topUnis: topUnisRes.data || [], 
+            totalVotes: 15420, // This should ideally come from an aggregate API
             mostCompetitive: competitiveData,
             trendingPolls: polls.slice(0, 3), // Top 3 trending
           });
@@ -113,7 +127,7 @@ export const CategoryDetailPage: React.FC = () => {
   }, [safeCategory]);
 
   // Helper to map Leaderboard entry to PollResult for PodiumView
-  const mapToPodiumFormat = (entries: any[]): PollResult[] => {
+  const mapToPodiumFormat = (entries: TopUniversityData[]): PollResult[] => {
     return entries.map((e, i) => ({
       pollId: 'cat-summary',
       pollQuestion: 'Category Leaders',
@@ -121,10 +135,10 @@ export const CategoryDetailPage: React.FC = () => {
       cycleMonth: 'Current',
       universityId: e.universityId,
       universityName: e.universityName,
-      universityShortName: e.universityName.substring(0, 3).toUpperCase(), // Fallback
+      universityShortName: e.universityName.substring(0, 3).toUpperCase(),
       universityColor: e.universityColor,
-      universityType: 'Public', // Fallback
-      votes: e.pollsWon * 100, // Mock representation
+      universityType: 'Private', // Fallback as insight service might not return type
+      votes: e.pollsWon * 100, // Visual representation for the podium (not strict vote count)
       percentage: e.avgPercentage,
       rank: i + 1
     }));
@@ -234,7 +248,7 @@ export const CategoryDetailPage: React.FC = () => {
                 polls={stats.trendingPolls} 
                 isLoading={false} 
                 votedPollIds={[]} // Simplified for view
-                onVote={(id) => navigate(`/poll/${id}`)} // Should link to vote page if not voted
+                onVote={(id) => navigate(`/poll/${id}`)}
                 onViewResults={(id) => navigate(`/poll/${id}`)}
               />
             </div>

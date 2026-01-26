@@ -21,11 +21,17 @@ import {
   cachePollResults,
   getCachedPollResults,
   invalidatePollResultsCache,
+  getVotedPolls,
+  getVoteDetails,
 } from './storage.service';
-
+import { getActivePolls } from './poll.service';
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
+export interface PollWithStatus extends Poll {
+  userHasVoted: boolean;
+  userVotedFor?: string | null;
+}
 
 export interface VoteResponse {
   success: boolean;
@@ -392,6 +398,52 @@ export async function getPollResultsById(
       success: false,
       data: null,
       error: 'Failed to fetch results',
+    };
+  }
+}
+/**
+ * PRODUCTION-READY FUNCTION
+ * Gets all active polls for a category and enriches them with the user's voting status.
+ */
+export async function getPollsForVoting(
+  category: PollCategory
+): Promise<DatabaseResponse<PollWithStatus[]>> {
+  try {
+    const pollsResponse = await getActivePolls(category);
+    
+    // FIX: Check for failure and return a correctly typed error response
+    if (!pollsResponse.success || !pollsResponse.data) {
+      return {
+        success: false,
+        data: null,
+        error: pollsResponse.error || 'Failed to fetch polls.',
+      };
+    }
+
+    const votedPollIds = getVotedPolls();
+    const voteDetails = getVoteDetails();
+
+    const pollsWithStatus: PollWithStatus[] = pollsResponse.data.map(poll => {
+      const hasVoted = votedPollIds.includes(poll.id);
+      return {
+        ...poll,
+        userHasVoted: hasVoted,
+        userVotedFor: hasVoted ? (voteDetails[poll.id]?.universityId || null) : null,
+      };
+    });
+
+    return {
+      success: true,
+      data: pollsWithStatus,
+      error: null,
+    };
+
+  } catch (error) {
+    console.error('[VotingService] Error getting polls with status:', error);
+    return {
+      success: false,
+      data: null,
+      error: 'Failed to prepare voting session.',
     };
   }
 }

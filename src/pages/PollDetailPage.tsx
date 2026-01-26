@@ -1,5 +1,4 @@
-// src/pages/PollDetailPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 // Layout & UI
@@ -22,10 +21,11 @@ import { LockedResultsCard } from '../components/voting/LockedResultsCard';
 // Services
 import { getPollWithResults, checkIfVoted } from '../services/voting.service';
 import { getActivePolls } from '../services/poll.service';
+import { getPollVoteHistory, getPollVoterDemographics } from '../services/analytics.service'; // REAL DATA
 import { useFingerprint } from '../hooks/useFingerprint';
 import { useToast } from '../hooks/useToast';
 import type { Poll, PollResult } from '../types/models';
-import { ArrowLeft, Clock, Users, TrendingUp, Info, Vote, Lock } from 'lucide-react';
+import { ArrowLeft, Users, TrendingUp, Info, Vote, Lock } from 'lucide-react';
 
 export const PollDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -33,115 +33,84 @@ export const PollDetailPage: React.FC = () => {
   const { isReady: isFingerprintReady } = useFingerprint();
   const { showErrorToast } = useToast();
 
-  // --- STATE ---
+  // State
   const [isLoading, setIsLoading] = useState(true);
   const [poll, setPoll] = useState<Poll | null>(null);
   const [results, setResults] = useState<PollResult[]>([]);
   const [totalVotes, setTotalVotes] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
-  const [isCheckingVote, setIsCheckingVote] = useState(false);
-  
-  // Related Polls
   const [relatedPolls, setRelatedPolls] = useState<Array<{ poll: Poll; results: PollResult[] }>>([]);
+  
+  // Chart Data State
+  const [historyData, setHistoryData] = useState<{ label: string; value: number }[]>([]);
+  const [demographicData, setDemographicData] = useState<{ label: string; value: number; color: string }[]>([]);
 
-  // Mock Data for Charts (In production, fetch from analytics service)
-  const historyData = [
-    { label: 'Day 1', value: 20 },
-    { label: 'Day 2', value: 45 },
-    { label: 'Day 3', value: 55 },
-    { label: 'Day 4', value: 80 },
-    { label: 'Today', value: 100 },
-  ];
+  // Memoized callback to prevent re-renders
+  const loadPollData = useCallback(async () => {
+    if (!slug || !isFingerprintReady) return;
+    
+    setIsLoading(true);
 
-  const demographicData = [
-    { label: 'Students', value: 65, color: '#3b82f6' },
-    { label: 'Alumni', value: 25, color: '#8b5cf6' },
-    { label: 'Other', value: 10, color: '#64748b' },
-  ];
-
-  // --- LOAD POLL DATA ---
-  useEffect(() => {
-    const loadPollData = async () => {
-      if (!slug || !isFingerprintReady) return;
+    try {
+      // Fetch all critical data in parallel
+      const [mainRes, votedStatusRes] = await Promise.all([
+        getPollWithResults(slug),
+        checkIfVoted(slug) // Assuming checkIfVoted can take a slug
+      ]);
       
-      setIsLoading(true);
-
-      try {
-        // 1. Fetch Poll & Results
-        const response = await getPollWithResults(slug);
-        
-        if (!response.success || !response.data || !response.data.poll) {
-          showErrorToast('Poll not found');
-          navigate('/404');
-          return;
-        }
-
-        const currentPoll = response.data.poll;
-        setPoll(currentPoll);
-        setResults(response.data.results || []);
-        setTotalVotes(response.data.totalVotes || 0);
-
-        // 2. Check Vote Status
-        setIsCheckingVote(true);
-        const voted = await checkIfVoted(currentPoll.id);
-        setHasVoted(voted);
-        setIsCheckingVote(false);
-
-        // 3. Load Related Polls (Same Category)
-        const relatedRes = await getActivePolls(currentPoll.category);
-        if (relatedRes.success && relatedRes.data) {
-          // Filter out current, take 3
-          const others = relatedRes.data
-            .filter(p => p.id !== currentPoll.id)
-            .slice(0, 3);
-            
-          // Get basic results for previews
-          const relatedData = await Promise.all(
-            others.map(async (p) => {
-              const res = await getPollWithResults(p.slug);
-              return {
-                poll: p,
-                results: res.data?.results || []
-              };
-            })
-          );
-          setRelatedPolls(relatedData);
-        }
-
-      } catch (error) {
-        console.error('Error loading poll details:', error);
-        showErrorToast('Failed to load poll data');
-      } finally {
-        setIsLoading(false);
+      if (!mainRes.success || !mainRes.data || !mainRes.data.poll) {
+        throw new Error('Poll not found');
       }
-    };
 
-    loadPollData();
+      const currentPoll = mainRes.data.poll;
+      setPoll(currentPoll);
+      setResults(mainRes.data.results || []);
+      setTotalVotes(mainRes.data.totalVotes || 0);
+      setHasVoted(votedStatusRes);
+
+      // Fetch non-critical data after main content is ready
+      if (votedStatusRes) {
+        const [historyRes, demographicsRes] = await Promise.all([
+          getPollVoteHistory(currentPoll.id),
+          getPollVoterDemographics(currentPoll.id)
+        ]);
+        if (historyRes.success) setHistoryData(historyRes.data || []);
+        if (demographicsRes.success) setDemographicData(demographicsRes.data || []);
+      }
+      
+      // Fetch related polls
+      const relatedRes = await getActivePolls(currentPoll.category);
+      if (relatedRes.success && relatedRes.data) {
+        const others = relatedRes.data.filter(p => p.id !== currentPoll.id).slice(0, 3);
+        const relatedData = await Promise.all(
+          others.map(async (p) => {
+            const res = await getPollWithResults(p.slug);
+            return { poll: p, results: res.data?.results || [] };
+          })
+        );
+        setRelatedPolls(relatedData);
+      }
+
+    } catch (error) {
+      showErrorToast((error as Error).message || 'Failed to load poll data');
+      navigate('/404');
+    } finally {
+      setIsLoading(false);
+    }
   }, [slug, isFingerprintReady, navigate, showErrorToast]);
 
-  // --- HANDLERS ---
-  const handleVoteClick = () => {
-    if (poll) {
-      navigate(`/vote/${poll.category}`);
-    }
-  };
+  useEffect(() => {
+    loadPollData();
+  }, [loadPollData]);
 
-  // --- RENDER STATES ---
-  if (!isFingerprintReady) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Spinner size="xl" variant="accent" />
-      </div>
-    );
-  }
+  const handleVoteClick = () => {
+    if (poll) navigate(`/vote/${poll.category}`);
+  };
 
   if (isLoading || !poll) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <Spinner size="xl" variant="accent" className="mb-4" />
-          <p className="text-slate-400 animate-pulse">Loading poll data...</p>
-        </div>
+        <Spinner size="xl" variant="accent" />
       </div>
     );
   }
@@ -150,176 +119,82 @@ export const PollDetailPage: React.FC = () => {
     <AppLayout>
       <PageContainer maxWidth="lg" title={poll.question}>
         
-        {/* --- HEADER --- */}
+        {/* HEADER */}
         <div className="mb-8">
-          <button 
-            onClick={() => navigate(-1)}
-            className="text-slate-400 hover:text-white flex items-center gap-2 mb-4 text-sm transition-colors"
-          >
+          <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white flex items-center gap-2 mb-4 text-sm">
             <ArrowLeft size={16} /> Back
           </button>
-
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3 flex-wrap">
-                <Badge variant="neon" className="uppercase tracking-widest text-[10px]">
-                  {poll.category}
-                </Badge>
-                <div className="flex items-center gap-1 text-xs text-slate-500">
-                  <Clock size={12} /> Cycle: {poll.cycleMonth || 'Current'}
-                </div>
-                <div className="flex items-center gap-1 text-xs text-slate-500">
-                  <Vote size={12} /> {totalVotes.toLocaleString()} votes
-                </div>
-                {isCheckingVote && (
-                  <div className="text-xs text-amber-500 animate-pulse">
-                    Checking vote status...
-                  </div>
-                )}
-              </div>
-              <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">
-                {poll.question}
-              </h1>
-              {poll.description && (
-                <p className="text-slate-400 mt-2">{poll.description}</p>
-              )}
+              <Badge variant="neon" className="uppercase mb-3">{poll.category}</Badge>
+              <h1 className="text-3xl md:text-4xl font-black text-white">{poll.question}</h1>
+              {poll.description && <p className="text-slate-400 mt-2">{poll.description}</p>}
             </div>
-
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <ShareButton title={poll.question} />
-              {!hasVoted && (
-                <Button 
-                  variant="primary" 
-                  onClick={handleVoteClick}
-                  leftIcon={<Vote size={16} />}
-                >
-                  Vote Now
-                </Button>
-              )}
+              {!hasVoted && <Button variant="primary" onClick={handleVoteClick} leftIcon={<Vote size={16} />}>Vote Now</Button>}
             </div>
           </div>
         </div>
 
-        {/* --- VOTE STATUS BANNER --- */}
+        {/* VOTE STATUS BANNER */}
         {hasVoted ? (
-          <div className="mb-6 p-4 bg-green-900/20 border border-green-800/30 rounded-xl flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-              <Vote size={16} className="text-green-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">You've voted in this poll</p>
-              <p className="text-xs text-green-400">Results unlocked below</p>
-            </div>
+          <div className="mb-6 p-4 bg-green-950/50 border border-green-500/30 rounded-xl flex items-center gap-3">
+            <Vote size={16} className="text-green-400" />
+            <p className="text-sm font-medium text-white">You've voted in this poll. Results unlocked.</p>
           </div>
         ) : (
-          <div className="mb-6 p-4 bg-amber-900/20 border border-amber-800/30 rounded-xl flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-              <Lock size={16} className="text-amber-400" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">Results are locked</p>
-              <p className="text-xs text-amber-400">Vote to see the community's choices</p>
-            </div>
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              onClick={handleVoteClick}
-            >
-              Vote to Unlock
-            </Button>
+          <div className="mb-6 p-4 bg-amber-950/50 border border-amber-500/30 rounded-xl flex items-center gap-3">
+            <Lock size={16} className="text-amber-400" />
+            <p className="text-sm font-medium text-white flex-1">Results are locked. Vote to see community choices.</p>
+            <Button variant="secondary" size="sm" onClick={handleVoteClick}>Vote to Unlock</Button>
           </div>
         )}
 
-        {/* --- MAIN RACE TRACK --- */}
-        <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        {/* MAIN RACE TRACK */}
+        <div className="mb-12">
           {hasVoted ? (
-            <RaceTrack 
-              results={results}
-              totalVotes={totalVotes}
-              userHasVoted={true}
-              onVoteClick={handleVoteClick}
-            />
+            <RaceTrack results={results} totalVotes={totalVotes} userHasVoted />
           ) : (
             <LockedResultsCard onVoteClick={handleVoteClick} />
           )}
         </div>
 
-        {/* --- INSIGHTS (ONLY IF VOTED) --- */}
+        {/* INSIGHTS (ONLY IF VOTED) */}
         {hasVoted && results.length > 0 && (
-          <div className="animate-in fade-in zoom-in-95 duration-500">
+          <div>
             <SectionDivider label="Deep Dive Analysis" icon={<Info size={16} />} />
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-              {/* Trend Chart */}
-              <Card className="md:col-span-2">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-bold text-white flex items-center gap-2">
-                    <TrendingUp size={18} className="text-cyan-400" /> Voting Momentum
-                  </h3>
-                  <Badge variant="success" dot>High Activity</Badge>
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+              <Card className="lg:col-span-2">
+                <h3 className="font-bold text-white flex items-center gap-2 mb-4"><TrendingUp /> Voting Momentum</h3>
                 <TrendChart data={historyData} />
               </Card>
-
-              {/* Demographics */}
               <Card>
-                <h3 className="font-bold text-white flex items-center gap-2 mb-6">
-                  <Users size={18} className="text-purple-400" /> Voter Types
-                </h3>
-                <div className="flex justify-center pb-4">
-                  <PieChart data={demographicData} size={180} />
-                </div>
+                <h3 className="font-bold text-white flex items-center gap-2 mb-4"><Users /> Voter Types</h3>
+                <PieChart data={demographicData} size={180} />
               </Card>
             </div>
           </div>
         )}
 
-        {/* --- RELATED POLLS --- */}
+        {/* RELATED POLLS */}
         {relatedPolls.length > 0 && (
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div>
             <SectionDivider label="Related Battles" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {relatedPolls.map((item) => (
-                <MiniRacePreview 
-                  key={item.poll.id}
-                  slug={item.poll.slug}
-                  question={item.poll.question}
-                  results={item.results}
-                  totalVotes={item.results.reduce((sum, result) => sum + result.votes, 0)}
-                />
+              {relatedPolls.map(({ poll, results }) => (
+                <MiniRacePreview key={poll.id} slug={poll.slug} question={poll.question} results={results} totalVotes={results.reduce((sum, r) => sum + r.votes, 0)} />
               ))}
             </div>
           </div>
         )}
 
-        {/* --- FOOTER CTA --- */}
         <div className="mt-16 text-center">
-          {hasVoted ? (
-            <>
-              <p className="text-slate-400 mb-4">Want to influence other categories?</p>
-              <Button 
-                variant="primary" 
-                onClick={() => navigate('/polls')}
-                className="shadow-lg shadow-blue-900/20"
-              >
-                Find More Battles
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-slate-400 mb-4">Your honest vote helps thousands of students</p>
-              <Button 
-                variant="neon" 
-                onClick={handleVoteClick}
-                leftIcon={<Vote size={16} />}
-                className="shadow-lg shadow-cyan-900/20"
-              >
-                Cast Your Vote Now
-              </Button>
-            </>
-          )}
+            <p className="text-slate-400 mb-4">{hasVoted ? "Want to influence other categories?" : "Your vote helps thousands of students."}</p>
+            <Button variant="primary" onClick={() => navigate(hasVoted ? '/polls' : `/vote/${poll.category}`)}>
+              {hasVoted ? "Find More Battles" : "Cast Your Vote Now"}
+            </Button>
         </div>
-
       </PageContainer>
     </AppLayout>
   );

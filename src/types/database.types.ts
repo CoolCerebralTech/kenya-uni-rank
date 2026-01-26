@@ -1,7 +1,5 @@
 // ============================================================================
-// AUTO-GENERATED DATABASE TYPES
-// Generate using: npx supabase gen types typescript --local > database.types.ts
-// Or manually update this file to match your schema
+// AUTO-GENERATED DATABASE TYPES (Manually Patched)
 // ============================================================================
 
 export type Json =
@@ -312,6 +310,27 @@ export interface Database {
           ends_at: string | null
         }[]
       }
+      // --- START: ADDED FUNCTIONS ---
+      get_daily_vote_counts: {
+        Args: {
+          p_poll_id: string
+          p_days: number
+        }
+        Returns: {
+          vote_day: string
+          vote_count: number
+        }[]
+      }
+      get_voter_demographics: {
+        Args: {
+          p_poll_id: string
+        }
+        Returns: {
+          voter_type: string
+          count: number
+        }[]
+      }
+      // --- END: ADDED FUNCTIONS ---
     }
     Enums: {
       [_ in never]: never

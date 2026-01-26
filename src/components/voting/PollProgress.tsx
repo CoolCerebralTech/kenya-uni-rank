@@ -6,6 +6,7 @@ interface PollProgressProps {
   current: number;
   total: number;
   category: string;
+  completionPercentage?: number; // Added optional prop
   onBack: () => void;
   onSkip: () => void;
 }
@@ -14,17 +15,22 @@ export const PollProgress: React.FC<PollProgressProps> = ({
   current,
   total,
   category,
+  completionPercentage, // Destructure it
   onBack,
   onSkip
 }) => {
-  const progress = (current / total) * 100;
+  // Use provided percentage OR calculate it manually
+  const progress = completionPercentage !== undefined 
+    ? completionPercentage 
+    : (current / total) * 100;
 
   return (
     <div className="sticky top-16 z-20 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 py-3 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 sm:rounded-lg sm:border sm:top-20">
       <div className="flex items-center justify-between mb-2">
         <button 
           onClick={onBack}
-          className="text-slate-400 hover:text-white transition-colors"
+          disabled={current === 1}
+          className="text-slate-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ArrowLeft size={20} />
         </button>

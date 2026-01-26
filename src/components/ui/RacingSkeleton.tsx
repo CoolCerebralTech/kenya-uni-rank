@@ -4,7 +4,15 @@ import React, { useState, useEffect } from 'react';
 const BAR_WIDTHS = [35, 42, 38, 45, 32, 40, 37];
 const ANIM_DURS = [1.2, 1.8, 1.4, 1.6, 1.3, 1.7, 1.5];
 
-export const RacingSkeleton: React.FC = () => {
+interface RacingSkeletonProps {
+  count?: number;
+  className?: string;
+}
+
+export const RacingSkeleton: React.FC<RacingSkeletonProps> = ({ 
+  count = 5,
+  className = '' 
+}) => {
   const [barIndex, setBarIndex] = useState(0);
 
   useEffect(() => {
@@ -14,9 +22,12 @@ export const RacingSkeleton: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Create an array based on the count prop
+  const items = Array.from({ length: count }, (_, i) => i + 1);
+
   return (
-    <div className="w-full space-y-4 p-4">
-      {[1, 2, 3, 4, 5].map((i) => {
+    <div className={`w-full space-y-4 p-4 ${className}`}>
+      {items.map((i) => {
         const idx = (i + barIndex) % BAR_WIDTHS.length;
         return (
           <div 

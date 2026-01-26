@@ -38,7 +38,7 @@ export const PollList: React.FC<PollListProps> = ({
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3, 4, 5, 6].map(i => <RacingSkeleton key={i} />)}
+        {[1, 2, 3, 4, 5, 6].map(i => <RacingSkeleton key={i} count={1} />)}
       </div>
     );
   }
@@ -75,17 +75,24 @@ export const PollList: React.FC<PollListProps> = ({
       {/* Grid */}
       {filteredPolls.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPolls.map(poll => (
-            <PollCard
-              key={poll.id}
-              poll={poll}
-              hasVoted={votedPollIds.includes(poll.id)}
-              totalVotes={1250} // Mock total for list view, replaced by real data usually
-              isTrending={Math.random() > 0.8} // Mock logic
-              onVote={() => onVote(poll.id)}
-              onViewResults={() => onViewResults(poll.id)}
-            />
-          ))}
+          {filteredPolls.map(poll => {
+            // FIXED: Use a deterministic calculation instead of Math.random()
+            // This ensures the value is stable across renders based on the ID
+            const idSum = poll.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const isMockTrending = idSum % 5 === 0; // Approx 20% chance to be trending
+
+            return (
+              <PollCard
+                key={poll.id}
+                poll={poll}
+                hasVoted={votedPollIds.includes(poll.id)}
+                totalVotes={1250} // Mock total for list view
+                isTrending={isMockTrending} 
+                onVote={() => onVote(poll.id)}
+                onViewResults={() => onViewResults(poll.id)}
+              />
+            );
+          })}
         </div>
       ) : (
         <EmptyState 

@@ -28,7 +28,9 @@ import {
   getPlatformStats, 
   getMostCompetitiveCategories,
   getTopThreeUniversities,
-  formatNumber
+  formatNumber,
+  // Added import here to fix the 'any' type error
+  type CompetitiveCategory 
 } from '../services/analytics.service';
 import type { PollCategory } from '../types/models';
 import { Activity, Users, Vote, Zap } from 'lucide-react';
@@ -52,7 +54,10 @@ export const HomePage: React.FC = () => {
   });
   const [mostCompetitiveCategory, setMostCompetitiveCategory] = useState<string>('Vibes');
   const [topUniversity, setTopUniversity] = useState<string>('Strathmore');
-  const [competitiveStats, setCompetitiveStats] = useState<any>(null);
+  
+  // FIXED: Replaced 'any' with the specific type
+  const [competitiveStats, setCompetitiveStats] = useState<CompetitiveCategory | null>(null);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
 
@@ -122,12 +127,14 @@ export const HomePage: React.FC = () => {
   }, []);
 
   // Handlers
-  const handleCategorySelect = (category: PollCategory) => {
-    navigate(`/polls?category=${category}`);
+ const handleCategorySelect = (category: PollCategory) => {
+    // CHANGED: Navigate to the VotingPage route directly
+    navigate(`/vote/${category}`); 
   };
 
   const handleVoteNow = () => {
-    navigate('/polls');
+    // CHANGED: Default to the first category or a specific one
+    navigate('/vote/Vibes'); 
   };
 
   if (isLoading) {
@@ -369,5 +376,5 @@ export const HomePage: React.FC = () => {
 
       </PageContainer>
     </AppLayout>
-  );
+  ); 
 };
