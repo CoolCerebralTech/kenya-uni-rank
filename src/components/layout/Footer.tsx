@@ -1,5 +1,5 @@
 import React from 'react';
-import { Twitter, Instagram, Github, Heart } from 'lucide-react';
+import { Twitter, Github, Linkedin, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Footer: React.FC = () => {
@@ -15,9 +15,9 @@ export const Footer: React.FC = () => {
               The student-powered truth engine. Helping 2026 KCSE graduates find their perfect university match through real data, not polished brochures.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="text-slate-400 hover:text-blue-400 transition-colors"><Twitter size={20} /></a>
-              <a href="#" className="text-slate-400 hover:text-pink-500 transition-colors"><Instagram size={20} /></a>
-              <a href="#" className="text-slate-400 hover:text-white transition-colors"><Github size={20} /></a>
+              <a href="https://x.com/h_hawkins8" className="text-slate-400 hover:text-blue-400 transition-colors"><Twitter size={20} /></a>
+              <a href="https://github.com/CoolCerebralTech" className="text-slate-400 hover:text-white transition-colors"><Github size={20} /></a>
+              <a href="https://www.linkedin.com/in/howkins-oyugi-8h8h" className="text-slate-400 hover:text-blue-600 transition-colors"><Linkedin size={20} /></a>
             </div>
           </div>
           
