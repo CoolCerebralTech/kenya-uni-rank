@@ -104,7 +104,7 @@ export const HomePage: React.FC = () => {
 
             {/* Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.05] animate-fade-in-up">
-              The pulse of<br />
+              The real truth about<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-400">
                 Kenya's campuses.
               </span>
@@ -112,7 +112,7 @@ export const HomePage: React.FC = () => {
 
             {/* Subhead */}
             <p className="text-base sm:text-lg text-slate-400 leading-relaxed max-w-xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-              Stop guessing. See real-time rankings of Kenyan universities based on unfiltered student votes — no signup, no ads, no polished brochures. From <strong className="text-white">Nairobi</strong> to <strong className="text-white">Juja</strong>, feel the vibe before you enroll.
+              Stop guessing. See what students actually think — fee stress, strike culture, hostel conditions, campus vibes. Real votes from real students, no polished brochures. From <strong className="text-white">UoN</strong> to <strong className="text-white">Juja</strong>, the unfiltered pulse of Kenyan campuses.
             </p>
 
             {/* CTAs */}
@@ -279,23 +279,23 @@ export const HomePage: React.FC = () => {
             <SectionLabel icon={<Users size={14} className="text-cyan-400" />} label="Platform insights" />
             <div className="space-y-4">
               <InsightCard
-                label="Most competitive"
-                value="Vibes"
-                sub="23% vs last cycle"
-                accentClass="text-fuchsia-300"
-                icon={<Zap size={16} className="text-fuchsia-400" />}
+                label="Most discussed"
+                value="Fees & HELB"
+                sub="Trending on X"
+                accentClass="text-amber-300"
+                icon={<Zap size={16} className="text-amber-400" />}
               />
               <InsightCard
-                label="Top-rated uni"
-                value="Strathmore"
-                sub="38% win rate"
+                label="Most roasted"
+                value="UoN"
+                sub="Strike culture & politics"
                 accentClass="text-cyan-300"
                 icon={<Trophy size={16} className="text-cyan-400" />}
               />
               <InsightCard
-                label="Next cycle"
-                value="Aug 2026"
-                sub="Voting opens in 7 days"
+                label="Most stable"
+                value="Strathmore"
+                sub="Fewest strike complaints"
                 accentClass="text-emerald-300"
                 icon={<Sparkles size={16} className="text-emerald-400" />}
               />
@@ -307,7 +307,7 @@ export const HomePage: React.FC = () => {
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <BigStat label="Total votes" value={stats.totalVotes} icon={<Vote size={16} />} />
           <BigStat label="Universities" value={stats.totalUniversities} icon={<Users size={16} />} />
-          <BigStat label="Active polls" value={stats.totalPolls} icon={<Zap size={16} />} />
+          <BigStat label="Live polls" value={stats.totalPolls} icon={<Zap size={16} />} />
           <BigStat label="Categories" value={stats.categoriesCount} icon={<Trophy size={16} />} />
         </section>
 

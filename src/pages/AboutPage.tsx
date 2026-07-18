@@ -31,10 +31,10 @@ export const AboutPage: React.FC = () => {
           <SectionDivider label="The Mission" icon={<Zap size={14} />} variant="neon" />
           <div className="glass rounded-2xl p-6 md:p-10 mt-4">
             <p className="text-lg sm:text-xl text-slate-300 leading-relaxed italic mb-5">
-              "UniPulse was born from a simple frustration: official university rankings tell you about research papers, but they don't tell you what it's actually like to live and learn on campus."
+              "UniPulse was born from a real conversation on X: students venting about fee strikes, missing marks, and hostel conditions — but nobody is listening. We centralize that sentiment into polls anyone can vote on."
             </p>
             <p className="text-sm sm:text-base text-slate-400 leading-relaxed">
-              We empower Kenyan students to share unfiltered sentiment across 6 categories — from the quality of WiFi to the intensity of social life — solving "placement regret" for the next generation.
+              We empower Kenyan students to share unfiltered sentiment across 6 categories — from HELB delays and strike culture to campus vibes and hostel quality — solving "placement regret" for the next generation. Built on real X conversations, not polished brochures.
             </p>
           </div>
         </section>

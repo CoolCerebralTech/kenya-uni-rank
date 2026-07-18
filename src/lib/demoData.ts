@@ -41,7 +41,8 @@ const CYCLE_START_ISO = '2026-07-01T00:00:00.000Z';
 const CYCLE_END_ISO = '2026-07-31T23:59:59.000Z';
 
 // ---------------------------------------------------------------------------
-// POLLS — 3 polls per category (18 total), realistic Kenyan questions
+// POLLS — rebuilt from real X/Twitter student sentiment (July 2026)
+// Based on Grok research: fees/HELB, strikes, hostels, employability, politics, vibes
 // ---------------------------------------------------------------------------
 interface DemoPollSeed {
   slug: string;
@@ -51,38 +52,43 @@ interface DemoPollSeed {
 }
 
 const POLL_SEEDS: DemoPollSeed[] = [
-  // general
-  { slug: 'best-overall-experience', category: 'general', question: 'Which university gives you the best overall student experience?', description: 'Think academics + social + campus + value combined.' },
-  { slug: 'best-value-for-money', category: 'general', question: 'Which uni is the best value for your money?', description: 'Fees, accommodation costs, and what you actually get.' },
-  { slug: 'recommend-to-friend', category: 'general', question: 'Which uni would you recommend to a friend?', description: 'The one you would send your younger sibling to.' },
-  // vibes
+  // ─── FEES & AFFORDABILITY (the #1 pain point on X) ───
+  { slug: 'worst-fee-stress', category: 'general', question: 'Which uni gives you the worst fee stress?', description: 'HELB delays, fee hikes, being sent home mid-semester.' },
+  { slug: 'best-value-for-money', category: 'general', question: 'Which uni is actually worth the fees you pay?', description: 'Value received vs. money spent — facilities, teaching, experience.' },
+  { slug: 'most-helb-friendly', category: 'general', question: 'Which uni is most HELB-friendly?', description: 'Fast disbursement, fewer delays, supportive financial aid office.' },
+
+  // ─── ACADEMIC STRESS (strikes, missing marks, quality) ───
+  { slug: 'worst-strike-culture', category: 'academics', question: 'Which uni has the worst strike culture?', description: 'Lecturer strikes, student strikes, semester disruptions.' },
+  { slug: 'best-academic-environment', category: 'academics', question: 'Which uni has the best academic environment?', description: 'Lecturers who show up, libraries, rigor, mentorship.' },
+  { slug: 'most-missing-marks', category: 'academics', question: 'Which uni is worst for missing marks?', description: 'Graduation delays, ungraded exams, disappearing results.' },
+
+  // ─── VIBES & LIFESTYLE (parties, pageants, social life) ───
   { slug: 'best-vibes', category: 'vibes', question: 'Which uni has the best campus vibes?', description: 'The feeling you get walking through the gates.' },
-  { slug: 'most-fun-campus', category: 'vibes', question: 'Where is the most fun campus in Kenya?', description: 'Events, music, parties, social life.' },
-  { slug: 'best-events-activities', category: 'vibes', question: 'Which uni has the best events & student activities?', description: 'Cultural weeks, concerts, clubs, ceremonies.' },
-  // academics
-  { slug: 'best-academic-environment', category: 'academics', question: 'Which uni has the best academic environment?', description: 'Lecturers, libraries, rigor, mentorship.' },
-  { slug: 'best-tech-program', category: 'academics', question: 'Which uni has the strongest tech / engineering program?', description: 'Coding culture, labs, hackathon wins.' },
-  { slug: 'best-business-school', category: 'academics', question: 'Which uni has the best business school?', description: 'Reputation, alumni network, placements.' },
-  // sports
+  { slug: 'most-fun-campus', category: 'vibes', question: 'Where is the most fun campus in Kenya?', description: 'Events, music, parties, pageants, social life.' },
+  { slug: 'best-events-activities', category: 'vibes', question: 'Which uni throws the best events?', description: 'Cultural weeks, concerts, Mr/Miss pageants, clubs.' },
+
+  // ─── SPORTS & SPIRIT ───
   { slug: 'best-sports-facilities', category: 'sports', question: 'Which uni has the best sports facilities?', description: 'Fields, courts, gyms, pools.' },
   { slug: 'best-athletics-program', category: 'sports', question: 'Which uni dominates Kenyan university sports?', description: 'KUSA league wins, rugby 7s, athletics.' },
-  // social
-  { slug: 'best-social-life', category: 'social', question: 'Where is the best social life?', description: 'Off-campus life, tao, haunts, community.' },
+
+  // ─── SOCIAL LIFE & COMMUNITY ───
+  { slug: 'best-social-life', category: 'social', question: 'Where is the best off-campus social life?', description: 'Tao, haunts, joints, community outside the gates.' },
   { slug: 'most-inclusive-campus', category: 'social', question: 'Which uni feels the most inclusive and welcoming?', description: 'Diversity, tribes, international students, queer-friendly.' },
-  // facilities
-  { slug: 'best-hostels', category: 'facilities', question: 'Which uni has the best hostels / accommodation?', description: 'Cleanliness, space, wifi, water.' },
+
+  // ─── FACILITIES & INFRASTRUCTURE (hostels, wifi, labs) ───
+  { slug: 'worst-hostels', category: 'facilities', question: 'Which uni has the worst hostels?', description: 'Overcrowding, bugs, water rationing, security.' },
   { slug: 'best-wifi-connectivity', category: 'facilities', question: 'Which uni has the most reliable campus wifi?', description: 'Speed + uptime in classes and hostels.' },
   { slug: 'best-library', category: 'facilities', question: 'Which uni has the best library?', description: 'Books, study space, hours, comfort.' },
 ];
 
-// Category metadata (matches what the rest of the app expects)
+// Category metadata — reflects real student conversation topics from X
 export const DEMO_CATEGORY_META: Record<PollCategory, { label: string; emoji: string; gradient: string; blurb: string }> = {
-  general: { label: 'General', emoji: '🎓', gradient: 'from-blue-500 to-indigo-600', blurb: 'Overall experience' },
-  vibes: { label: 'Vibes', emoji: '✨', gradient: 'from-fuchsia-500 to-pink-600', blurb: 'Culture & lifestyle' },
-  academics: { label: 'Academics', emoji: '📚', gradient: 'from-emerald-500 to-teal-600', blurb: 'Quality of learning' },
+  general: { label: 'Fees & HELB', emoji: '💰', gradient: 'from-amber-500 to-orange-600', blurb: 'Money stress & value' },
+  vibes: { label: 'Vibes', emoji: '✨', gradient: 'from-fuchsia-500 to-pink-600', blurb: 'Campus culture & lifestyle' },
+  academics: { label: 'Academics', emoji: '📚', gradient: 'from-emerald-500 to-teal-600', blurb: 'Strikes, marks & quality' },
   sports: { label: 'Sports', emoji: '⚽', gradient: 'from-orange-500 to-red-600', blurb: 'Athletics & spirit' },
-  social: { label: 'Social', emoji: '🤝', gradient: 'from-violet-500 to-purple-600', blurb: 'Community & fun' },
-  facilities: { label: 'Facilities', emoji: '🏛️', gradient: 'from-cyan-500 to-blue-600', blurb: 'Infrastructure' },
+  social: { label: 'Social', emoji: '🤝', gradient: 'from-violet-500 to-purple-600', blurb: 'Community & inclusion' },
+  facilities: { label: 'Facilities', emoji: '🏛️', gradient: 'from-cyan-500 to-blue-600', blurb: 'Hostels, wifi & infrastructure' },
 };
 
 // ---------------------------------------------------------------------------
@@ -126,20 +132,23 @@ export function getDemoPollById(id: string): Poll | undefined {
 // We pick a stable "headline" set + a category-tinted leader bias so the
 // results feel credible (e.g. JKUAT rises in academics, KU rises in sports).
 // ---------------------------------------------------------------------------
-// Bias map: which unis tend to lead which categories. This makes the demo
-// feel like a real race, not random noise.
+// Bias map — reflects real X sentiment from Grok research (July 2026)
+// Public unis (UoN, TUK, Moi) lead "negative" polls (strikes, fees, hostels)
+// Privates (Strathmore, USIU, MKU) lead "positive" polls (facilities, stability)
+// For "worst X" polls, the worst-performing uni gets the most votes
 const CATEGORY_LEADER_BIAS: Record<PollCategory, string[]> = {
-  general: ['uon', 'strath', 'ku'],
-  vibes: ['ku', 'uon', 'usiu'],
-  academics: ['strath', 'jkuat', 'uon'],
-  sports: ['ku', 'jkuat', 'uon'],
-  social: ['uon', 'usiu', 'ku'],
-  facilities: ['strath', 'usiu', 'ku'],
+  general: ['uon', 'tuk', 'ku'],      // Fee stress: publics hit hardest
+  vibes: ['ku', 'uon', 'usiu'],       // Vibes: KU and UoN dominate social chatter
+  academics: ['uon', 'moi', 'ku'],   // Strike culture: publics with most disruptions
+  sports: ['ku', 'jkuat', 'uon'],     // Sports: KU tradition
+  social: ['uon', 'usiu', 'ku'],      // Social life: big campuses win
+  facilities: ['uon', 'tuk', 'moi'], // Worst hostels: overcrowded publics
 };
 
 function pickCompetitors(category: PollCategory): University[] {
-  // Always include the big 7, then bias the order so leaders match real perception
-  const HEADLINE = ['uon', 'ku', 'jkuat', 'strath', 'usiu', 'mku', 'tuk'];
+  // Headline set expanded from real X research — Moi now included (mentioned
+  // alongside UoN for academic disruptions). 8 unis compete per poll.
+  const HEADLINE = ['uon', 'ku', 'jkuat', 'moi', 'strath', 'usiu', 'mku', 'tuk'];
   const ordered: string[] = [...(CATEGORY_LEADER_BIAS[category] || [])];
   for (const id of HEADLINE) if (!ordered.includes(id)) ordered.push(id);
   return ordered.map(getUniversityById).filter(Boolean) as University[];
@@ -314,7 +323,7 @@ export function getDemoCategoryInsights(): DemoCategoryInsight[] {
       total_votes: totalVotes,
       universities_active: activeSet.size,
       recent_activity_percentage: 15 + ((idx * 7) % 30),
-      is_trending: cat === 'vibes' || cat === 'social',
+      is_trending: cat === 'general' || cat === 'academics',
     };
   });
 }

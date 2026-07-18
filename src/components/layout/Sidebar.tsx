@@ -10,6 +10,7 @@ import { ProgressBar } from '../ui/ProgressBar';
 // render from the canonical POLL_CATEGORIES list (no mock data).
 
 import { POLL_CATEGORIES } from '../../types/models';
+import { DEMO_CATEGORY_META } from '../../lib/demoData';
 
 export const Sidebar: React.FC = () => {
   // Demo progress — read from localStorage via existing useVotingFlow if available.
@@ -92,7 +93,7 @@ export const Sidebar: React.FC = () => {
                   ${isActive && !isCompleted ? 'text-cyan-300 bg-slate-800/40' : ''}
                 `}
               >
-                <span className="capitalize">{cat}</span>
+                <span className="capitalize">{DEMO_CATEGORY_META[cat]?.label ?? cat}</span>
                 {isCompleted ? (
                   <span className="text-[10px] font-bold text-emerald-400">✓ DONE</span>
                 ) : (
