@@ -3,88 +3,86 @@ import { useNavigate } from 'react-router-dom';
 
 // Layout & UI
 import { AppLayout } from '../components/layout/AppLayout';
-import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/ui/Badge';
 import { Spinner } from '../components/ui/FullScreenLoader';
-import { Select } from '../components/ui/Select';
 
-// Visualization
+// Racing
 import { PodiumView } from '../components/racing/PodiumView';
 import { TrendIndicator } from '../components/racing/TrendIndicator';
-import { StatCard } from '../components/analytics/StatCard';
 
 // Services & Data
 import { getUniversityRankings, getPlatformStats } from '../services/analytics.service';
 import type { UniversityLeaderboardEntry } from '../services/database.service';
-import type { PollResult } from '../types/models'; 
-import { Trophy, Crown, Filter, ArrowUpRight } from 'lucide-react';
+import type { PollResult, PollCategory } from '../types/models';
+import { Trophy, Crown, ArrowUpRight } from 'lucide-react';
+
+// Demo fallback
+import { getDemoLeaderboard, getDemoPlatformStats } from '../lib/demoData';
+import { isPureDemo } from '../lib/demoFallback';
 
 export const LeaderboardPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // --- STATE ---
   const [leaderboard, setLeaderboard] = useState<UniversityLeaderboardEntry[]>([]);
   const [platformStats, setPlatformStats] = useState({ votes: 0, polls: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Filters
+
   const [typeFilter, setTypeFilter] = useState<'All' | 'Public' | 'Private'>('All');
   const [sortBy, setSortBy] = useState<'votes' | 'wins'>('votes');
 
-  // --- DATA FETCHING ---
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      
       try {
         const [rankingsRes, statsRes] = await Promise.all([
           getUniversityRankings(),
-          getPlatformStats()
+          getPlatformStats(),
         ]);
 
-        if (rankingsRes.success && rankingsRes.data) {
-          setLeaderboard(rankingsRes.data);
+        let lb: UniversityLeaderboardEntry[] | null = null;
+        if (rankingsRes.success && rankingsRes.data && rankingsRes.data.length > 0) {
+          lb = rankingsRes.data;
+        } else if (isPureDemo) {
+          lb = getDemoLeaderboard() as UniversityLeaderboardEntry[];
         }
+        if (lb) setLeaderboard(lb);
 
+        let votes = 0; let polls = 0;
         if (statsRes.success && statsRes.data) {
-          setPlatformStats({
-            votes: statsRes.data.totalVotes,
-            polls: statsRes.data.totalPolls
-          });
+          votes = statsRes.data.totalVotes;
+          polls = statsRes.data.totalPolls;
+        } else if (isPureDemo) {
+          votes = getDemoPlatformStats().totalVotes;
+          polls = getDemoPlatformStats().totalPolls;
         }
+        setPlatformStats({ votes, polls });
       } catch (error) {
-        console.error("Failed to load leaderboard", error);
+        console.error('Failed to load leaderboard', error);
+        // Hard fallback to demo
+        setLeaderboard(getDemoLeaderboard() as UniversityLeaderboardEntry[]);
+        const ds = getDemoPlatformStats();
+        setPlatformStats({ votes: ds.totalVotes, polls: ds.totalPolls });
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  // --- PROCESSING ---
-  
-  // 1. Filter
-  const filteredData = leaderboard.filter(uni => {
-    if (typeFilter === 'All') return true;
-    return uni.type === typeFilter;
-  });
-
-  // 2. Sort
+  // Filter + sort
+  const filteredData = leaderboard.filter(uni => typeFilter === 'All' || uni.type === typeFilter);
   const sortedData = [...filteredData].sort((a, b) => {
     if (sortBy === 'wins') {
-      // Primary: Wins, Secondary: Votes
       return b.first_place_finishes - a.first_place_finishes || b.total_votes_received - a.total_votes_received;
     }
-    // Default: Total Votes
     return b.total_votes_received - a.total_votes_received;
   });
 
-  // 3. Map for Podium (Top 3)
+  // Podium data — top 3 mapped to PollResult shape for PodiumView
   const podiumData: PollResult[] = sortedData.slice(0, 3).map((entry, index) => ({
     pollId: 'leaderboard',
     pollQuestion: 'Overall Ranking',
-    category: 'general', // Assuming 'general' is valid or cast as PollCategory if strict
+    category: 'general' as PollCategory,
     cycleMonth: 'Current',
     universityId: entry.id,
     universityName: entry.name,
@@ -92,51 +90,54 @@ export const LeaderboardPage: React.FC = () => {
     universityColor: entry.color,
     universityType: entry.type,
     votes: entry.total_votes_received,
-    percentage: 0, 
-    rank: index + 1
+    percentage: 0,
+    rank: index + 1,
   }));
 
-  // --- RENDER HELPERS ---
-
-  const RankRow = ({ entry, index }: { entry: UniversityLeaderboardEntry, index: number }) => {
+  const RankRow = ({ entry, index }: { entry: UniversityLeaderboardEntry; index: number }) => {
     const isTop3 = index < 3;
     const rank = index + 1;
-    
-    // Simulate trend data
-    const trend = index % 5 === 0 ? 'up' : index % 3 === 0 ? 'down' : 'stable';
-    
+    // Stable, derived "trend" so the demo never shows random noise per render.
+    const trend: 'up' | 'down' | 'stable' =
+      index % 5 === 0 ? 'up' : index % 3 === 0 ? 'down' : 'stable';
+
     return (
-      <div 
+      <div
         onClick={() => navigate(`/university/${entry.id}`)}
         className={`
-          group relative flex items-center justify-between p-4 rounded-xl border transition-all duration-200 cursor-pointer
-          ${isTop3 ? 'bg-slate-900/80 border-slate-700 shadow-lg' : 'bg-slate-900/30 border-slate-800/50 hover:bg-slate-800 hover:border-slate-700'}
+          group relative flex items-center justify-between p-3 sm:p-4 rounded-xl border cursor-pointer transition-all duration-200
+          ${isTop3
+            ? 'glass border-slate-700/60 shadow-md'
+            : 'bg-slate-900/30 border-slate-800/60 hover:bg-slate-800/40 hover:border-slate-700'}
         `}
       >
-        {/* Hover Glow */}
+        {/* Hover wash */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-xl" />
 
-        <div className="flex items-center gap-4 md:gap-6 z-10">
-          {/* Rank Number */}
-          <div className={`
-            w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg font-black text-lg md:text-xl
-            ${rank === 1 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 
-              rank === 2 ? 'bg-slate-300/20 text-slate-300 border border-slate-300/50' :
-              rank === 3 ? 'bg-amber-700/20 text-amber-600 border border-amber-700/50' :
-              'text-slate-500'}
-          `}>
+        {/* Left: rank + name */}
+        <div className="flex items-center gap-3 sm:gap-4 z-10 min-w-0">
+          {/* Rank chip */}
+          <div
+            className={`
+              w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg font-black text-sm sm:text-base shrink-0
+              ${rank === 1 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/40' :
+                rank === 2 ? 'bg-slate-300/15 text-slate-300 border border-slate-300/40' :
+                rank === 3 ? 'bg-amber-800/15 text-amber-700 border border-amber-800/40' :
+                'text-slate-500 bg-slate-800/40'}
+            `}
+          >
             {rank}
           </div>
 
-          {/* Uni Info */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-bold text-white text-base md:text-lg group-hover:text-cyan-400 transition-colors">
+          {/* Name */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <h3 className="font-bold text-white text-sm sm:text-base group-hover:text-cyan-300 transition-colors truncate">
                 {entry.name}
               </h3>
-              {isTop3 && <Crown size={14} className="text-yellow-500 fill-yellow-500" />}
+              {isTop3 && <Crown size={12} className="text-amber-400 fill-amber-500 shrink-0" />}
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] text-slate-500">
               <Badge size="sm" variant={entry.type === 'Public' ? 'info' : 'warning'} className="opacity-80">
                 {entry.type}
               </Badge>
@@ -145,135 +146,139 @@ export const LeaderboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="flex items-center gap-4 md:gap-8 z-10 text-right">
-          
-          <div className="hidden md:block">
-            <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Dominance</div>
-            <div className="font-mono text-slate-300 flex justify-end items-center gap-1">
-              <Trophy size={12} className="text-yellow-500" /> {entry.first_place_finishes} Wins
+        {/* Right: stats */}
+        <div className="flex items-center gap-3 sm:gap-5 z-10 shrink-0">
+          <div className="hidden sm:block text-right">
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Wins</div>
+            <div className="font-mono tabular text-slate-300 text-xs flex items-center justify-end gap-1">
+              <Trophy size={11} className="text-amber-500" />
+              {entry.first_place_finishes}
             </div>
           </div>
 
-          <div className="min-w-[80px]">
-            <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Votes</div>
-            <div className="text-lg font-bold text-white group-hover:scale-110 transition-transform origin-right">
+          <div className="text-right min-w-[60px]">
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Votes</div>
+            <div className="text-sm sm:text-base font-bold text-white tabular group-hover:scale-110 group-hover:text-cyan-300 transition-all origin-right">
               {entry.total_votes_received.toLocaleString()}
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center justify-center w-8">
-             <TrendIndicator trend={trend} />
+          <div className="hidden sm:block">
+            <TrendIndicator trend={trend} />
           </div>
-          
-          <ArrowUpRight size={16} className="text-slate-600 group-hover:text-cyan-400 transition-colors" />
+
+          <ArrowUpRight size={14} className="text-slate-600 group-hover:text-cyan-400 transition-colors shrink-0" />
         </div>
       </div>
     );
   };
 
-  // --- LOADING STATE ---
+  // ---------------- RENDER ----------------
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Spinner size="xl" variant="accent" />
-      </div>
+      <AppLayout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-center">
+          <Spinner size="xl" variant="accent" />
+          <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Loading the leaderboard…</p>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
     <AppLayout>
-      <PageContainer maxWidth="xl" title="Leaderboard">
-        
-        {/* --- HEADER --- */}
-        <div className="text-center mb-10">
-          <Badge variant="neon" className="mb-4">Live Rankings</Badge>
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-2">
+      <div className="w-full max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 space-y-8 md:space-y-10">
+
+        {/* HEADER */}
+        <header className="text-center max-w-3xl mx-auto">
+          <Badge variant="neon" className="mb-3">Live Rankings</Badge>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-2">
             The Grand Leaderboard
           </h1>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-            Aggregated performance across all {platformStats.polls} categories. 
-            This is the ultimate measure of student sentiment in Kenya.
+          <p className="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+            Where Kenya's universities stand across {platformStats.polls} active polls — by real student votes.
           </p>
-        </div>
+        </header>
 
-        {/* --- PODIUM --- */}
-        <div className="mb-16">
+        {/* PODIUM */}
+        <section className="glass rounded-2xl p-5 sm:p-6">
           <PodiumView results={podiumData} />
-        </div>
+        </section>
 
-        {/* --- STATS GRID --- */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          <StatCard 
-            label="Total Votes" 
-            value={platformStats.votes.toLocaleString()} 
-            icon={<Filter size={16} />}
-            color="text-cyan-400"
-          />
-          <StatCard 
-            label="Active Unis" 
-            value={leaderboard.length} 
-            icon={<Crown size={16} />}
-            color="text-purple-400"
-          />
-          <StatCard 
-            label="Cycle" 
-            value="Jan '26" 
-            color="text-green-400"
-          />
-          <StatCard 
-            label="Next Update" 
-            value="Real-time" 
-            color="text-orange-400"
-          />
-        </div>
+        {/* STATS GRID */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          {[
+            { label: 'Total votes', value: platformStats.votes.toLocaleString(), className: 'text-cyan-400' },
+            { label: 'Active unis', value: leaderboard.length, className: 'text-violet-400' },
+            { label: 'Cycle', value: "Jul '26", className: 'text-emerald-400' },
+            { label: 'Next update', value: 'Real-time', className: 'text-amber-400' },
+          ].map(stat => (
+            <div key={stat.label} className="glass rounded-xl p-4 text-center">
+              <div className={`text-xl sm:text-2xl font-bold tabular ${stat.className}`}>
+                {stat.value}
+              </div>
+              <div className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider font-bold mt-1">
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </section>
 
-        {/* --- CONTROLS --- */}
-        <div className="sticky top-16 z-30 bg-slate-950/90 backdrop-blur-md py-4 border-b border-slate-800/50 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+        {/* CONTROLS — sticky filter bar */}
+        <div className="sticky top-16 z-30 bg-slate-950/80 backdrop-blur-md py-3 -mx-4 px-4 sm:rounded-xl border-y sm:border border-slate-800/60 flex flex-col sm:flex-row justify-between items-center gap-3">
+          {/* Type filter (segmented) */}
+          <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-800 text-[11px] font-bold uppercase tracking-wider">
             {(['All', 'Public', 'Private'] as const).map(type => (
               <button
                 key={type}
                 onClick={() => setTypeFilter(type)}
-                className={`
-                  px-4 py-1.5 text-sm font-bold rounded-md transition-all
-                  ${typeFilter === type ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}
-                `}
+                className={`px-3 py-1.5 rounded-md transition-all ${
+                  typeFilter === type
+                    ? 'bg-cyan-500/15 text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.15)]'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
               >
                 {type}
               </button>
             ))}
           </div>
 
+          {/* Sort toggle (segmented) */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-500 uppercase">Sort By:</span>
-            <Select 
-              options={[
-                { label: 'Total Votes', value: 'votes' },
-                { label: 'Gold Medals', value: 'wins' }
-              ]}
-              value={sortBy}
-              // FIXED: Cast to specific union type instead of 'any'
-              onChange={(e) => setSortBy(e.target.value as 'votes' | 'wins')}
-              className="w-40"
-            />
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Sort by</span>
+            <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-800 text-[11px] font-bold uppercase tracking-wider">
+              <button
+                onClick={() => setSortBy('votes')}
+                className={`px-3 py-1.5 rounded-md transition-all ${
+                  sortBy === 'votes' ? 'bg-cyan-500/15 text-cyan-300' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                Votes
+              </button>
+              <button
+                onClick={() => setSortBy('wins')}
+                className={`px-3 py-1.5 rounded-md transition-all ${
+                  sortBy === 'wins' ? 'bg-cyan-500/15 text-cyan-300' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                Wins
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* --- RANKINGS LIST --- */}
-        <div className="space-y-3 pb-12">
+        {/* RANKINGS LIST */}
+        <section className="space-y-2.5 sm:space-y-3 pb-12">
           {sortedData.map((entry, index) => (
             <RankRow key={entry.id} entry={entry} index={index} />
           ))}
-          
           {sortedData.length === 0 && (
             <div className="py-20 text-center">
               <p className="text-slate-500">No universities found for this filter.</p>
             </div>
           )}
-        </div>
-
-      </PageContainer>
+        </section>
+      </div>
     </AppLayout>
   );
 };

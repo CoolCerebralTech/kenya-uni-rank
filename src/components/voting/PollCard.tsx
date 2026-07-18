@@ -1,11 +1,9 @@
 import React from 'react';
 import type { Poll } from '../../types/models';
 import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { Clock, Flame, CheckCircle2 } from 'lucide-react';
-import { formatTimeRemaining } from '../../services/poll.service';
-import { getCategoryColor } from '../../services/poll.service';
+import { Clock, Flame, CheckCircle2, ArrowRight } from 'lucide-react';
+import { formatTimeRemaining, getCategoryColor } from '../../services/poll.service';
 
 interface PollCardProps {
   poll: Poll;
@@ -16,6 +14,8 @@ interface PollCardProps {
   onViewResults: () => void;
 }
 
+// UniPulse v3 — refined poll card. Glass surface, category chip with
+// soft glow, trending flame badge, hover lift.
 export const PollCard: React.FC<PollCardProps> = ({
   poll,
   hasVoted,
@@ -27,57 +27,64 @@ export const PollCard: React.FC<PollCardProps> = ({
   const categoryColor = getCategoryColor(poll.category);
 
   return (
-    <Card className="flex flex-col h-full hover:border-slate-600 transition-colors group">
+    <Card className="relative flex flex-col h-full group overflow-hidden animate-fade-in-up">
+      {/* Ambient category glow on hover */}
+      <div
+        aria-hidden
+        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-0 group-hover:opacity-20 blur-2xl transition-opacity duration-500 pointer-events-none"
+        style={{ backgroundColor: categoryColor }}
+      />
+
       {/* Header */}
-      <div className="flex justify-between items-start mb-3">
-        <Badge 
-          className="bg-opacity-10 border-opacity-20"
-          // If you want to apply dynamic colors, you can use inline style on a wrapper or generate a dynamic class
+      <div className="relative flex justify-between items-start mb-3">
+        <span
+          className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border"
+          style={{
+            color: categoryColor,
+            backgroundColor: `${categoryColor}15`,
+            borderColor: `${categoryColor}30`,
+          }}
         >
-          <span
-            style={{ backgroundColor: categoryColor, borderColor: categoryColor, color: categoryColor }}
-          >
-            {poll.category}
-          </span>
-        </Badge>
-        
+          {poll.category}
+        </span>
+
         {isTrending && (
-          <div className="flex items-center gap-1 text-orange-400 text-xs font-bold animate-pulse">
-            <Flame size={12} fill="currentColor" />
-            <span>Trending</span>
+          <div className="flex items-center gap-1 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+            <Flame size={12} fill="currentColor" className="animate-pulse" />
+            <span>Hot</span>
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <h3 className="text-lg font-bold text-white mb-2 flex-grow group-hover:text-blue-200 transition-colors">
+      {/* Question */}
+      <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex-grow leading-snug group-hover:text-cyan-200 transition-colors line-clamp-3">
         {poll.question}
       </h3>
 
-      {/* Meta Data */}
-      <div className="flex items-center gap-4 text-xs text-slate-500 mb-4 font-mono">
+      {/* Meta */}
+      <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-4 font-mono tabular">
         <span>{totalVotes.toLocaleString()} votes</span>
         {poll.endsAt && (
           <span className="flex items-center gap-1">
-            <Clock size={12} />
+            <Clock size={11} />
             {formatTimeRemaining(poll)}
           </span>
         )}
       </div>
 
-      {/* Actions */}
+      {/* CTA */}
       <div className="mt-auto">
         {hasVoted ? (
-          <Button 
-            variant="secondary" 
-            fullWidth 
+          <Button
+            variant="secondary"
+            fullWidth
             onClick={onViewResults}
-            leftIcon={<CheckCircle2 size={16} className="text-green-500" />}
+            leftIcon={<CheckCircle2 size={14} className="text-emerald-400" />}
           >
-            Results
+            View Results
           </Button>
         ) : (
-          <Button variant="primary" fullWidth onClick={onVote}>
+          <Button variant="primary" fullWidth onClick={onVote} rightIcon={<ArrowRight size={14} />}>
             Vote Now
           </Button>
         )}

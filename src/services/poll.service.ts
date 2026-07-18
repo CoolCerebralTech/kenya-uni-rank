@@ -56,7 +56,7 @@ export async function getPollStatus(pollId: string): Promise<PollServiceResponse
   endsAt: string | null;
 }>> {
   try {
-    const { data, error } = await supabase.rpc('get_poll_status', {
+    const { data, error } = await supabase!.rpc('get_poll_status', {
       p_poll_id: pollId,
     });
 
@@ -115,7 +115,7 @@ export async function getActivePolls(
   try {
     const currentMonth = getCurrentCycleMonth();
     
-    let query = supabase
+    let query = supabase!
       .from('polls')
       .select('*')
       .eq('is_active', true)
@@ -159,7 +159,7 @@ export async function getPollBySlug(
   slug: string
 ): Promise<PollServiceResponse<Poll>> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('polls')
       .select('*')
       .eq('slug', slug)
@@ -206,7 +206,7 @@ export async function getPolls(
   filters: PollFilters = {}
 ): Promise<PollServiceResponse<Poll[]>> {
   try {
-    let query = supabase.from('polls').select('*');
+    let query = supabase!.from('polls').select('*');
 
     if (filters.category) {
       query = query.eq('category', filters.category);
@@ -326,7 +326,7 @@ export function getPreviousCycleMonth(): string {
  */
 export async function getAvailableCycles(): Promise<PollServiceResponse<string[]>> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('polls')
       .select('cycle_month')
       .order('cycle_month', { ascending: false });

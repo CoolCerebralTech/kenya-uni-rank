@@ -10,24 +10,24 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className = '', variant = 'default', padding = 'md', hoverEffect = false, children, ...props }, ref) => {
     
     const baseStyles = "rounded-xl overflow-hidden transition-all duration-300";
-    
+
     const variants = {
-      default: "bg-slate-900 border border-slate-800/60",
-      elevated: "bg-slate-900 shadow-xl shadow-black/50 border border-slate-800",
-      outlined: "bg-transparent border border-slate-700",
-      glass: "bg-slate-900/60 backdrop-blur-md border border-white/10",
+      default: "bg-slate-900/50 border border-slate-800/60",
+      elevated: "bg-slate-900/60 shadow-xl shadow-black/40 border border-slate-800/60",
+      outlined: "bg-transparent border border-slate-700/60",
+      glass: "glass border border-slate-800/60",
     };
 
     const paddings = {
       none: "p-0",
       sm: "p-4",
-      md: "p-6",
-      lg: "p-8",
+      md: "p-5 sm:p-6",
+      lg: "p-6 sm:p-8",
     };
 
-    // UPGRADE: Enhanced hover effect with a glowing gradient border
-    const hoverClasses = hoverEffect 
-      ? "hover:-translate-y-1 relative before:absolute before:inset-0 before:p-px before:rounded-xl before:bg-gradient-to-b before:from-indigo-500 before:to-blue-600 before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300" 
+    // Refined hover effect — subtle lift + cyan glow border
+    const hoverClasses = hoverEffect
+      ? "hover:-translate-y-0.5 hover:border-cyan-500/30 hover:shadow-[0_0_20px_rgba(6,182,212,0.08)]"
       : "";
 
     return (

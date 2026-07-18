@@ -1,380 +1,372 @@
-// src/pages/HomePage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Layouts & UI
+// Layouts
 import { AppLayout } from '../components/layout/AppLayout';
-import { PageContainer } from '../components/layout/PageContainer';
 import { SectionDivider } from '../components/layout/SectionDivider';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { RacingSkeleton } from '../components/ui/RacingSkeleton';
+
+// Racing
+import { UniversityRacer } from '../components/racing/UniversityRacer';
+
+// Categories
+import { CategorySelector } from '../components/voting/CategorySelector';
+
+// Stats card
 import { Card } from '../components/ui/Card';
 
-// Feature Components
-import { HeroRacePreview } from '../components/racing/HeroRacePreview';
-import { CategorySelector } from '../components/voting/CategorySelector';
-import { ProgressRing } from '../components/gamification/ProgressRing';
-import { LiveFeed } from '../components/features/LiveFeed';
-import { PollOfTheDay } from '../components/features/PollOfTheDay';
-import { StatCard } from '../components/analytics/StatCard';
+// Demo data (always populated — even when Supabase is down)
+import {
+  DEMO_POLLS,
+  getDemoResultsForPoll,
+  getDemoPlatformStats,
+  getDemoRecentActivity,
+} from '../lib/demoData';
 
-// AI Components
-import { AIPreviewCard } from '../components/ai/AIPreviewCard';
-import { AIMatchTeaser } from '../components/ai/AIMatchTeaser';
+import type { PollCategory, PollResult } from '../types/models';
+import { Activity, Users, Vote, Zap, Trophy, ChevronRight, Sparkles, TrendingUp } from 'lucide-react';
 
-// Services & Types
-import { 
-  getPlatformStats, 
-  getMostCompetitiveCategories,
-  getTopThreeUniversities,
-  formatNumber,
-  // Added import here to fix the 'any' type error
-  type CompetitiveCategory 
-} from '../services/analytics.service';
-import type { PollCategory } from '../types/models';
-import { Activity, Users, Vote, Zap } from 'lucide-react';
-
-// Hooks
-import { useVotingFlow } from '../hooks/useVotingFlow';
-import { useRealtime } from '../hooks/useRealtime';
-
-export const HomePage: React.FC = () => {
-  const navigate = useNavigate();
-  
-  // State
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
-  const [stats, setStats] = useState({ 
-    votes: 0, 
-    polls: 0, 
-    unis: 0,
-    totalVotes: 0,
-    totalUniversities: 0,
-    totalPolls: 0 
-  });
-  const [mostCompetitiveCategory, setMostCompetitiveCategory] = useState<string>('Vibes');
-  const [topUniversity, setTopUniversity] = useState<string>('Strathmore');
-  
-  // FIXED: Replaced 'any' with the specific type
-  const [competitiveStats, setCompetitiveStats] = useState<CompetitiveCategory | null>(null);
-  
-  const [isLoading, setIsLoading] = useState(true);
-  const [isStatsLoading, setIsStatsLoading] = useState(true);
-
-  // Hooks
-  const votingFlow = useVotingFlow();
-  const userProgress = votingFlow.getProgress();
-
-  // Real-time subscription for platform activity
-  const { isConnected } = useRealtime({
-    pollId: 'platform',
-    enabled: true,
-    onVoteReceived: () => {
-      // Refresh platform stats when new votes come in
-      loadPlatformStats();
-    }
-  });
-
-  // Data Fetching
-  const loadPlatformStats = async () => {
-    try {
-      setIsStatsLoading(true);
-      const [statsRes, competitiveRes, rankingsRes] = await Promise.all([
-        getPlatformStats(),
-        getMostCompetitiveCategories(1),
-        getTopThreeUniversities()
-      ]);
-
-      if (statsRes.success && statsRes.data) {
-        setStats({
-          votes: statsRes.data.totalVotes,
-          polls: statsRes.data.totalPolls,
-          unis: statsRes.data.totalUniversities,
-          totalVotes: statsRes.data.totalVotes,
-          totalUniversities: statsRes.data.totalUniversities,
-          totalPolls: statsRes.data.totalPolls
-        });
-      }
-
-      if (competitiveRes.success && competitiveRes.data && competitiveRes.data.length > 0) {
-        const category = competitiveRes.data[0];
-        setMostCompetitiveCategory(category.category);
-        setCompetitiveStats(category);
-      }
-
-      if (rankingsRes.success && rankingsRes.data && rankingsRes.data.length > 0) {
-        setTopUniversity(rankingsRes.data[0].name);
-      }
-    } catch (error) {
-      console.error('Failed to load platform stats', error);
-    } finally {
-      setIsStatsLoading(false);
-    }
-  };
+// ----------------- Animated count-up -----------------
+// Suspends animation re-triggering on every value change (because the value
+// is treated as a target). Mount-triggered: kicks off once on mount so it
+// plays whenever the element renders, regardless of viewport position.
+const AnimatedCount: React.FC<{ value: number; className?: string }> = ({ value, className }) => {
+  const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      setIsLoading(true);
-      await loadPlatformStats();
-      setIsLoading(false);
+    const duration = 900;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(value * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
     };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
 
-    loadDashboardData();
+  return <span className={`tabular ${className || ''}`}>{display.toLocaleString()}</span>;
+};
 
-    // Set up periodic refresh every 30 seconds
-    const interval = setInterval(loadPlatformStats, 30000);
-    return () => clearInterval(interval);
-  }, []);
+// ----------------- Time-ago formatter -----------------
+function relTime(iso: string): string {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
 
-  // Handlers
- const handleCategorySelect = (category: PollCategory) => {
-    // CHANGED: Navigate to the VotingPage route directly
-    navigate(`/vote/${category}`); 
-  };
+// ----------------- Category meta -----------------
+// (Category grid is handled by the CategorySelector component below.)
 
-  const handleVoteNow = () => {
-    // CHANGED: Default to the first category or a specific one
-    navigate('/vote/Vibes'); 
-  };
 
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <PageContainer maxWidth="xl" title="Home">
-          <div className="space-y-8">
-            <RacingSkeleton count={5} />
-          </div>
-        </PageContainer>
-      </AppLayout>
-    );
-  }
+// =================================================================
+// HomePage — UniPulse v3
+// Designed for the interview demo: tight, premium, fully populated.
+// =================================================================
+export const HomePage: React.FC = () => {
+  const navigate = useNavigate();
+
+  // --- Headline race (always populated — uses demo data) ---
+  const heroPoll = DEMO_POLLS.find(p => p.slug === 'best-vibes') || DEMO_POLLS[0];
+  const heroAgg = getDemoResultsForPoll(heroPoll.id);
+  const heroResults: PollResult[] = heroAgg.results.slice(0, 5);
+
+  // --- Platform stats ---
+  const stats = getDemoPlatformStats();
+
+  // --- Recent activity for the live feed ---
+  const activity = getDemoRecentActivity(8);
+
+  // --- Featured poll (rotating) ---
+  const featured = DEMO_POLLS.find(p => p.slug === 'recommend-to-friend') || DEMO_POLLS[0];
+  const featuredAgg = getDemoResultsForPoll(featured.id);
+
+  const handleCategorySelect = (category: PollCategory) => navigate(`/vote/${category}`);
 
   return (
     <AppLayout>
-      <PageContainer maxWidth="xl" title="Home">
-        
-        {/* --- HERO SECTION --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mb-16 items-center">
-          
-          {/* Left: Copy & CTA */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-900/30 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-wider animate-in fade-in slide-in-from-left-4 duration-500">
-              <div className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                <span>{isConnected ? 'Live' : 'Connecting...'}</span>
-              </div>
-              <span>•</span>
-              <span>Phase 2 Live Cycle: Jan 2026</span>
+      <div className="w-full max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 space-y-12 md:space-y-16">
+
+        {/* =========================================== HERO */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          <div className="lg:col-span-7 space-y-6 max-w-2xl">
+            {/* Status pill */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-cyan-500/30 text-[11px] font-bold uppercase tracking-wider text-cyan-300 animate-fade-in-up">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
+              </span>
+              <span>Live Pulse • July 2026 Cycle</span>
             </div>
-            
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-              The Student <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
-                Truth Engine.
+
+            {/* Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.05] animate-fade-in-up">
+              The pulse of<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-400">
+                Kenya's campuses.
               </span>
             </h1>
-            
-            <p className="text-lg text-slate-400 max-w-xl leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-              Stop guessing. See real-time rankings of Kenyan universities based on unfiltered student votes. From <strong>Nairobi</strong> to <strong>Juja</strong>, find the vibe that fits.
+
+            {/* Subhead */}
+            <p className="text-base sm:text-lg text-slate-400 leading-relaxed max-w-xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+              Stop guessing. See real-time rankings of Kenyan universities based on unfiltered student votes — no signup, no ads, no polished brochures. From <strong className="text-white">Nairobi</strong> to <strong className="text-white">Juja</strong>, feel the vibe before you enroll.
             </p>
 
-            <div className="flex flex-wrap gap-4 pt-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
-              <Button size="lg" variant="neon" onClick={() => navigate('/polls')} className="px-8 shadow-cyan-500/20 shadow-lg">
-                Enter the Race
-              </Button>
-              <Button size="lg" variant="ghost" onClick={() => navigate('/leaderboard')}>
-                View Leaderboard
-              </Button>
+            {/* CTAs */}
+            <div className="flex flex-wrap gap-3 pt-2 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              <button
+                onClick={() => navigate('/polls')}
+                className="group inline-flex items-center gap-2 h-12 px-6 rounded-xl text-base font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_30px_rgba(34,211,238,0.3)] hover:shadow-[0_0_40px_rgba(34,211,238,0.45)] hover:-translate-y-0.5"
+              >
+                <Vote size={18} />
+                Cast your vote
+                <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5" />
+              </button>
+              <button
+                onClick={() => navigate('/leaderboard')}
+                className="inline-flex items-center gap-2 h-12 px-6 rounded-xl text-base font-semibold text-slate-200 bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 hover:bg-slate-800/40 transition-all"
+              >
+                <Trophy size={18} />
+                View leaderboard
+              </button>
             </div>
 
-            {/* Quick Stats Row */}
-            <div className="flex items-center gap-6 pt-6 border-t border-slate-800/50 animate-in fade-in delay-500">
-              <div className="text-center sm:text-left">
-                <div className="text-2xl font-bold text-white">{formatNumber(stats.votes)}</div>
-                <div className="text-xs text-slate-500 uppercase tracking-wide">Votes Cast</div>
-              </div>
-              <div className="w-px h-8 bg-slate-800" />
-              <div className="text-center sm:text-left">
-                <div className="text-2xl font-bold text-white">{stats.unis}</div>
-                <div className="text-xs text-slate-500 uppercase tracking-wide">Universities</div>
-              </div>
-              <div className="w-px h-8 bg-slate-800" />
-              <div className="text-center sm:text-left">
-                <div className="text-2xl font-bold text-emerald-400 animate-pulse">Live</div>
-                <div className="text-xs text-slate-500 uppercase tracking-wide">System Status</div>
-              </div>
+            {/* Quick stats */}
+            <div className="flex items-stretch gap-4 pt-6 border-t border-slate-800/60 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+              <Stat>
+                <StatValue>
+                  <AnimatedCount value={stats.totalVotes} className="text-white" />
+                </StatValue>
+                <StatLabel>Votes cast</StatLabel>
+              </Stat>
+              <Divider />
+              <Stat>
+                <StatValue>
+                  <AnimatedCount value={stats.totalUniversities} className="text-white" />
+                </StatValue>
+                <StatLabel>Universities</StatLabel>
+              </Stat>
+              <Divider />
+              <Stat>
+                <StatValue>
+                  <span className="text-emerald-400">Live</span>
+                </StatValue>
+                <StatLabel>System status</StatLabel>
+              </Stat>
             </div>
           </div>
 
-          {/* Right: Race Visual */}
-          <div className="lg:col-span-5 relative animate-in fade-in zoom-in-95 duration-1000 delay-200">
-            {/* Glow backing */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 to-cyan-500/20 blur-3xl rounded-full opacity-50 pointer-events-none" />
-            <HeroRacePreview />
-          </div>
-        </div>
-
-        {/* --- USER PROGRESS BAR (Real Voting Progress) --- */}
-        <div className="mb-12 bg-slate-900/50 border border-slate-800 rounded-2xl p-4 md:p-6 backdrop-blur-sm flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <ProgressRing 
-              progress={userProgress.percentage} 
-              radius={32} 
-              stroke={5}
-              color="#22d3ee"
-            >
-              <span className="text-xs font-bold text-cyan-400">{userProgress.percentage}%</span>
-            </ProgressRing>
-            <div>
-              <h3 className="font-bold text-white">Your Voice Matters</h3>
-              <p className="text-sm text-slate-400">
-                You've completed <span className="text-cyan-400 font-bold">{userProgress.completed}</span> of {userProgress.total} categories.
-              </p>
-            </div>
-          </div>
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={() => navigate('/polls')}
-            disabled={userProgress.completed >= userProgress.total}
-          >
-            {userProgress.completed >= userProgress.total ? 'All Categories Complete' : 'Continue Voting'}
-          </Button>
-        </div>
-
-        <SectionDivider label="Select Your Battleground" icon={<Zap size={16} />} variant="neon" />
-
-        {/* --- CATEGORY SELECTION --- */}
-        <div className="mb-16">
-          <CategorySelector onSelect={handleCategorySelect} />
-        </div>
-
-        {/* --- LIVE GRID (Activity + Poll of Day + Stats) --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-16">
-          
-          {/* Left Column: Poll of the Day */}
-          <div className="lg:col-span-1">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Vote className="text-orange-500" size={20} /> Featured Battle
-            </h3>
-            <PollOfTheDay onVote={handleVoteNow} />
-          </div>
-
-          {/* Middle: Live Feed */}
-          <div className="lg:col-span-1 h-[320px] lg:h-auto">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Activity className="text-green-500" size={20} /> Real-Time Feed
-            </h3>
-            <LiveFeed />
-          </div>
-
-          {/* Right: Stats & Trends */}
-          <div className="lg:col-span-1 flex flex-col gap-4">
-            <h3 className="text-lg font-bold text-white mb-0 flex items-center gap-2">
-              <Users className="text-blue-500" size={20} /> Platform Insights
-            </h3>
-            
-            <div className="flex-1 grid grid-cols-1 gap-4">
-              {isStatsLoading ? (
-                <>
-                  <Card className="p-4">
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-4 bg-slate-700 rounded w-3/4"></div>
-                      <div className="h-8 bg-slate-700 rounded"></div>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-4 bg-slate-700 rounded w-3/4"></div>
-                      <div className="h-8 bg-slate-700 rounded"></div>
-                    </div>
-                  </Card>
-                </>
-              ) : (
-                <>
-                  <StatCard 
-                    label="Most Competitive" 
-                    value={mostCompetitiveCategory.charAt(0).toUpperCase() + mostCompetitiveCategory.slice(1)} 
-                    icon={<Zap size={20} />}
-                    trend={competitiveStats?.competitionLevel === 'high' ? 12 : competitiveStats?.competitionLevel === 'medium' ? 5 : 0}
-                  />
-                  <StatCard 
-                    label="Top University" 
-                    value={topUniversity} 
-                    icon={<Vote size={20} />} 
-                    color="text-indigo-400"
-                    trend={8}
-                  />
-                </>
-              )}
-              
-              <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-slate-500 font-bold uppercase mb-1">Current Cycle</div>
-                  <div className="text-white font-mono">Closing in 14 days</div>
-                </div>
+          {/* Race preview — refined card with demo data */}
+          <div className="lg:col-span-5 relative animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+            <div className="absolute -inset-6 bg-gradient-to-br from-cyan-600/15 to-emerald-500/10 blur-3xl rounded-full opacity-60 pointer-events-none" />
+            <div className="relative glass rounded-2xl p-5 sm:p-6 overflow-hidden">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Badge variant="success" className="animate-pulse">
-                    <span className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      Active
-                    </span>
-                  </Badge>
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  </span>
+                  <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-[0.15em]">Live Race</h3>
                 </div>
+                <span className="text-[10px] font-mono text-slate-500 uppercase">{heroAgg.totalVotes.toLocaleString()} votes</span>
               </div>
+              <h2 className="text-lg sm:text-xl font-bold text-white mb-5 leading-snug">
+                {heroPoll.question}
+              </h2>
+              <div className="space-y-3.5">
+                {heroResults.map((r) => (
+                  <UniversityRacer
+                    key={r.universityId}
+                    result={r}
+                    isLeader={r.rank === 1}
+                    isLocked={false}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={() => navigate('/poll/best-vibes')}
+                className="mt-5 w-full h-10 rounded-lg text-xs font-bold uppercase tracking-wider text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 transition-colors flex items-center justify-center gap-1.5"
+              >
+                See full results <ChevronRight size={14} />
+              </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* --- PLATFORM STATS ROW --- */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
-          <Card className="p-5 text-center">
-            <div className="text-3xl font-bold text-white mb-2">{formatNumber(stats.totalVotes)}</div>
-            <div className="text-sm text-slate-400 uppercase tracking-wider">Total Votes</div>
-            <div className="text-xs text-slate-600 mt-1">Across all polls</div>
-          </Card>
-          
-          <Card className="p-5 text-center">
-            <div className="text-3xl font-bold text-white mb-2">{stats.totalUniversities}</div>
-            <div className="text-sm text-slate-400 uppercase tracking-wider">Universities</div>
-            <div className="text-xs text-slate-600 mt-1">Public & Private</div>
-          </Card>
-          
-          <Card className="p-5 text-center">
-            <div className="text-3xl font-bold text-white mb-2">{stats.totalPolls}</div>
-            <div className="text-sm text-slate-400 uppercase tracking-wider">Active Polls</div>
-            <div className="text-xs text-slate-600 mt-1">In current cycle</div>
-          </Card>
-          
-          <Card className="p-5 text-center">
-            <div className="text-3xl font-bold text-white mb-2">6</div>
-            <div className="text-sm text-slate-400 uppercase tracking-wider">Categories</div>
-            <div className="text-xs text-slate-600 mt-1">Vibes, Academics, etc.</div>
-          </Card>
-        </div>
+        {/* =========================================== CATEGORIES */}
+        <section>
+          <SectionDivider label="Select your battleground" icon={<Zap size={14} />} variant="neon" />
+          <div className="mt-4">
+            <CategorySelector onSelect={handleCategorySelect} />
+          </div>
+        </section>
 
-        {/* --- AI TEASER SECTION --- */}
-        <div className="mb-16">
-          <AIPreviewCard onClick={() => setIsAIModalOpen(true)} />
-        </div>
+        {/* =========================================== FEATURED + LIVE FEED + INSIGHTS */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
+          {/* Featured Battle */}
+          <div className="lg:col-span-1">
+            <SectionLabel icon={<Vote size={14} className="text-amber-400" />} label="Featured battle" />
+            <Card variant="glass" className="h-full p-5 flex flex-col group cursor-pointer hover:-translate-y-1 transition-transform" onClick={() => navigate(`/poll/${featured.slug}`)}>
+              {/* Badge */}
+              <div className="flex items-start justify-between mb-3">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                  <TrendingUp size={10} /> Hot
+                </span>
+                <span className="text-[10px] font-mono text-slate-500 uppercase">{featured.category}</span>
+              </div>
+              <h3 className="text-base font-bold text-white mb-1 leading-snug group-hover:text-cyan-300 transition-colors">
+                {featured.question}
+              </h3>
+              <p className="text-xs text-slate-500 mb-4 flex-grow line-clamp-2">
+                {featured.description}
+              </p>
+              <div className="space-y-1.5 mb-4">
+                {featuredAgg.results.slice(0, 3).map((r) => (
+                  <div key={r.universityId} className="flex items-center gap-2 text-xs">
+                    <span className="font-mono text-slate-600 w-4 text-right">{r.rank}.</span>
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.universityColor }} />
+                    <span className={`flex-grow truncate ${r.rank === 1 ? 'text-white font-semibold' : 'text-slate-400'}`}>
+                      {r.universityName}
+                    </span>
+                    <span className="font-mono tabular text-slate-300">{r.percentage.toFixed(1)}%</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate(`/poll/${featured.slug}`); }}
+                className="w-full h-10 rounded-lg text-xs font-bold uppercase tracking-wider text-white bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 transition-colors flex items-center justify-center gap-1.5"
+              >
+                Cast your vote <ChevronRight size={14} />
+              </button>
+            </Card>
+          </div>
 
-        {/* Modal for AI */}
-        <AIMatchTeaser isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} />
+          {/* Live Feed */}
+          <div className="lg:col-span-1">
+            <SectionLabel icon={<Activity size={14} className="text-emerald-400" />} label="Real-time pulse" />
+            <Card variant="glass" className="h-full p-5 overflow-hidden">
+              <div className="space-y-3 max-h-[360px] overflow-y-auto no-scrollbar">
+                {activity.map((a, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 text-sm animate-fade-in-up"
+                    style={{ animationDelay: `${i * 0.04}s` }}
+                  >
+                    <div
+                      className="h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-md"
+                      style={{ backgroundColor: a.university_color }}
+                    >
+                      {a.university_short_name.slice(0, 2)}
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <p className="text-xs text-slate-300 truncate">
+                        <span className="font-semibold text-white capitalize">{a.voter_type}</span>{' '}voted for{' '}
+                        <span className="font-semibold" style={{ color: a.university_color }}>{a.university_short_name}</span>
+                      </p>
+                      <p className="text-[10px] text-slate-600 uppercase tracking-wide">{relTime(a.created_at)} ago</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
 
-        {/* --- DISCLAIMER SECTION --- */}
-        <div className="mt-12 pt-8 border-t border-slate-800/50 text-center">
-          <p className="text-sm text-slate-500">
-            <strong>Disclaimer:</strong> UniPulse rankings are based on real-time student and alumni votes. 
-            This is a decision-aid system showing community sentiment, not official university rankings.
+          {/* Insights */}
+          <div className="lg:col-span-1">
+            <SectionLabel icon={<Users size={14} className="text-cyan-400" />} label="Platform insights" />
+            <div className="space-y-4">
+              <InsightCard
+                label="Most competitive"
+                value="Vibes"
+                sub="23% vs last cycle"
+                accentClass="text-fuchsia-300"
+                icon={<Zap size={16} className="text-fuchsia-400" />}
+              />
+              <InsightCard
+                label="Top-rated uni"
+                value="Strathmore"
+                sub="38% win rate"
+                accentClass="text-cyan-300"
+                icon={<Trophy size={16} className="text-cyan-400" />}
+              />
+              <InsightCard
+                label="Next cycle"
+                value="Aug 2026"
+                sub="Voting opens in 7 days"
+                accentClass="text-emerald-300"
+                icon={<Sparkles size={16} className="text-emerald-400" />}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================== PLATFORM STATS */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <BigStat label="Total votes" value={stats.totalVotes} icon={<Vote size={16} />} />
+          <BigStat label="Universities" value={stats.totalUniversities} icon={<Users size={16} />} />
+          <BigStat label="Active polls" value={stats.totalPolls} icon={<Zap size={16} />} />
+          <BigStat label="Categories" value={stats.categoriesCount} icon={<Trophy size={16} />} />
+        </section>
+
+        {/* =========================================== DISCLAIMER */}
+        <section className="pt-8 border-t border-slate-800/40 text-center">
+          <p className="text-xs text-slate-500 max-w-2xl mx-auto leading-relaxed">
+            <strong className="text-slate-400">Disclaimer:</strong> UniPulse rankings reflect real-time student sentiment — not official university rankings. A decision-aid, not a verdict.
           </p>
-          <p className="text-xs text-slate-600 mt-2">
-            System Status: <span className={`font-bold ${isConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
-              {isConnected ? 'All Systems Operational' : 'Connecting to Live Feed...'}
-            </span>
+          <p className="text-[10px] text-slate-600 mt-2 uppercase tracking-wider">
+            v3.0 • The Student Truth Engine
           </p>
-        </div>
-
-      </PageContainer>
+        </section>
+      </div>
     </AppLayout>
-  ); 
+  );
 };
+
+// ---------- Small presentational helpers ----------
+const Stat: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex flex-col">{children}</div>
+);
+const StatValue: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="text-2xl sm:text-3xl font-bold leading-none">{children}</div>
+);
+const StatLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="text-[10px] text-slate-500 uppercase tracking-[0.15em] font-bold mt-1.5">{children}</div>
+);
+const Divider: React.FC = () => <div className="w-px h-10 bg-slate-800/60 self-center" />;
+
+const SectionLabel: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
+  <div className="flex items-center gap-2 mb-4">
+    {icon}
+    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-[0.15em]">{label}</h3>
+  </div>
+);
+
+const InsightCard: React.FC<{
+  label: string;
+  value: string;
+  sub: string;
+  accentClass: string;
+  icon: React.ReactNode;
+}> = ({ label, value, sub, accentClass, icon }) => (
+  <Card variant="glass" className="p-4 group hover:-translate-y-0.5 transition-transform">
+    <div className="flex items-center justify-between mb-1">
+      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{label}</span>
+      <div className="opacity-80 group-hover:opacity-100 transition-opacity">{icon}</div>
+    </div>
+    <div className={`text-xl font-bold ${accentClass}`}>{value}</div>
+    <div className="text-[11px] text-slate-500 mt-0.5 font-mono tabular">{sub}</div>
+  </Card>
+);
+
+const BigStat: React.FC<{ label: string; value: number; icon: React.ReactNode }> = ({ label, value, icon }) => (
+  <Card variant="glass" className="p-4 sm:p-5 text-center">
+    <div className="flex items-center justify-center mb-2 text-cyan-400/70">{icon}</div>
+    <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tabular">
+      <AnimatedCount value={value} />
+    </div>
+    <div className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider font-bold">{label}</div>
+  </Card>
+);

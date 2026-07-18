@@ -7,39 +7,41 @@ interface SectionDividerProps {
   className?: string;
 }
 
-export const SectionDivider: React.FC<SectionDividerProps> = ({ 
-  label, 
-  icon, 
+// UniPulse v3 — refined section divider. Tighter spacing, cyan accent for neon.
+export const SectionDivider: React.FC<SectionDividerProps> = ({
+  label,
+  icon,
   variant = 'simple',
-  className = '' 
+  className = '',
 }) => {
-  
   const variants = {
-    simple: "border-slate-800",
-    neon: "border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.1)]",
-    glass: "border-white/10",
+    simple: 'border-slate-800/60',
+    neon: 'border-cyan-500/25',
+    glass: 'border-white/10',
   };
 
+  const iconColor =
+    variant === 'neon' ? 'text-cyan-400' : 'text-slate-500';
+
   return (
-    <div className={`relative flex items-center py-8 ${className}`}>
-      <div className={`flex-grow border-t ${variants[variant]}`}></div>
-      
+    <div className={`relative flex items-center py-5 ${className}`}>
+      <div className={`flex-grow border-t ${variants[variant]}`} />
+
       {(label || icon) && (
-        <div className="flex-shrink-0 mx-4 flex items-center gap-2">
-          {icon && <span className="text-slate-500">{icon}</span>}
+        <div className="flex-shrink-0 mx-3 sm:mx-4 flex items-center gap-1.5">
+          {icon && <span className={iconColor}>{icon}</span>}
           {label && (
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.18em]">
               {label}
             </span>
           )}
         </div>
       )}
-      
-      <div className={`flex-grow border-t ${variants[variant]}`}></div>
-      
-      {/* Decorative gradient fade for neon variant */}
+
+      <div className={`flex-grow border-t ${variants[variant]}`} />
+
       {variant === 'neon' && (
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/5 to-transparent pointer-events-none" />
       )}
     </div>
   );

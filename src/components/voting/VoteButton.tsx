@@ -9,10 +9,10 @@ export const VoteButton: React.FC<VoteButtonProps> = ({ state, className = '', .
   const baseStyles = "relative overflow-hidden w-full h-10 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2";
   
   const stateStyles = {
-    idle: "bg-slate-800 text-white hover:bg-blue-600 hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] border border-slate-700 hover:border-blue-500",
+    idle: "bg-slate-800/70 text-slate-200 hover:bg-cyan-500/15 hover:text-cyan-300 hover:border-cyan-400/50 border border-slate-700 backdrop-blur",
     loading: "bg-slate-900 text-slate-400 border border-slate-800 cursor-wait",
-    success: "bg-green-600 text-white border border-green-500 shadow-[0_0_15px_rgba(22,163,74,0.5)] cursor-default",
-    error: "bg-red-900/50 text-red-200 border border-red-800 animate-shake",
+    success: "bg-emerald-600 text-white border border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)] cursor-default",
+    error: "bg-red-900/50 text-red-200 border border-red-800",
     disabled: "bg-slate-900/50 text-slate-600 border border-slate-800 cursor-not-allowed",
   };
 

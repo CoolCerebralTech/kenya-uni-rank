@@ -395,7 +395,7 @@ export async function getPollResultsById(
     }
 
     // Fetch from database using standard supabase client
-    const { data: resultsData, error } = await supabase
+    const { data: resultsData, error } = await supabase!
       .from('poll_results')
       .select('*')
       .eq('poll_id', pollId)

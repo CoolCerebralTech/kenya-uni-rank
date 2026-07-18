@@ -26,42 +26,36 @@ export const RaceTrack: React.FC<RaceTrackProps> = ({
   }, [results]);
 
   return (
-    <Card className="relative overflow-hidden min-h-[300px] flex flex-col" padding="none">
-      
+    <Card className="relative overflow-hidden min-h-[280px] flex flex-col" padding="none" variant="glass">
+
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50 relative z-10">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+      <div className="flex justify-between items-center px-4 sm:px-5 py-3 border-b border-slate-800/60 relative z-10">
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.18em]">
           Live Standings
         </span>
         <div className="flex items-center gap-2">
-           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-           <span className="text-xs text-slate-400 font-mono">
-             {totalVotes.toLocaleString()} VOTES
+           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+           <span className="text-[11px] text-slate-400 font-mono tabular">
+             {totalVotes.toLocaleString()} votes
            </span>
         </div>
       </div>
 
-      {/* 🎨 EPIC RACE ANIMATION WRAPPER */}
-      <div className="relative p-4 flex-1 bg-slate-950/30">
-        
-        {/* Particle effects (only when voted) */}
-        <RaceParticles active={userHasVoted && sortedResults.length > 0} color="#06b6d4" />
+      {/* Race */}
+      <div className="relative p-4 sm:p-5 flex-1">
+        {/* Particle effects */}
+        <RaceParticles active={userHasVoted && sortedResults.length > 0} color="#22d3ee" />
 
-        {/* 
-           FIX: Removed key={animationKey} to stop forced re-renders. 
-           RaceAnimation uses useLayoutEffect to detect DOM position changes automatically.
-        */}
-        <RaceAnimation 
-          enableEffects={userHasVoted} 
-          raceMode="turbo"
-        >
-          <div className="space-y-3 relative z-10">
+        <RaceAnimation enableEffects={userHasVoted} raceMode="turbo">
+          <div className="space-y-2.5 relative z-10">
             {sortedResults.map((result) => (
-              <div 
-                key={result.universityId} 
+              <div
+                key={result.universityId}
                 data-race-key={result.universityId}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${result.rank * 0.08}s` }}
               >
-                <UniversityRacer 
+                <UniversityRacer
                   result={result}
                   isLeader={result.rank === 1}
                   isLocked={!userHasVoted}

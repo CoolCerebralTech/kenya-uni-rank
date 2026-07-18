@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import type { University } from '../../types/models';
 import { UniversityCard } from './UniversityCard';
-import { Input } from '../ui/Input';
-import { Search } from 'lucide-react';
 import { EmptyState } from '../ui/EmptyState';
+import { Search } from 'lucide-react';
 
 interface UniversityGridProps {
   universities: University[];
@@ -13,6 +12,9 @@ interface UniversityGridProps {
   onVote?: (id: string) => void;
 }
 
+// UniPulse v3 — refined voting grid.
+// Filter bar is a translucent pill, not a sticky slate block. Grid is denser
+// on mobile (2-up) and tighter on desktop (3-up at md, 4-up at lg).
 export const UniversityGrid: React.FC<UniversityGridProps> = ({
   universities,
   selectedId,
@@ -27,34 +29,39 @@ export const UniversityGrid: React.FC<UniversityGridProps> = ({
     const matchesSearch =
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.shortName.toLowerCase().includes(search.toLowerCase());
-
     const matchesType = typeFilter === 'All' || u.type === typeFilter;
-
     return matchesSearch && matchesType;
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between sticky top-[4.5rem] z-30 bg-slate-950/80 backdrop-blur-md p-4 -mx-4 sm:mx-0 rounded-xl border border-slate-800/50">
-        <div className="w-full sm:w-72">
-          <Input
-            placeholder="Search universities..."
+    <div className="space-y-5">
+      {/* Filter / search pill */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+        <div className="relative sm:w-64 flex-grow">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+          />
+          <input
+            type="text"
+            placeholder="Search universities…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            leftIcon={<Search size={16} />}
+            className="w-full h-10 pl-9 pr-3 rounded-lg bg-slate-900/60 border border-slate-800 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-400/40 focus:bg-slate-900 transition-colors"
           />
         </div>
 
-        <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-800">
+        {/* Type segmented control */}
+        <div className="flex bg-slate-900/60 rounded-lg p-1 border border-slate-800 text-[11px] font-bold uppercase tracking-wider self-start sm:self-auto">
           {(['All', 'Public', 'Private'] as const).map((type) => (
             <button
               key={type}
               type="button"
               onClick={() => setTypeFilter(type)}
-              className={`px-4 py-2 text-xs font-medium rounded-md transition-all ${
+              className={`px-3 py-1.5 rounded-md transition-all ${
                 typeFilter === type
-                  ? 'bg-slate-700 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 shadow-[0_0_10px_rgba(34,211,238,0.15)]'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
               }`}
             >
               {type}
@@ -63,8 +70,9 @@ export const UniversityGrid: React.FC<UniversityGridProps> = ({
         </div>
       </div>
 
+      {/* Grid */}
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {filtered.map((uni) => (
             <UniversityCard
               key={uni.id}
@@ -72,7 +80,6 @@ export const UniversityGrid: React.FC<UniversityGridProps> = ({
               isSelected={selectedId === uni.id}
               voteState={voteStates[uni.id] || 'idle'}
               onSelect={() => onSelect(uni.id)}
-              // ✅ Always pass a function, even if onVote is undefined
               onVote={() => onVote?.(uni.id)}
             />
           ))}

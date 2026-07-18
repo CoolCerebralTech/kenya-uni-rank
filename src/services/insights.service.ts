@@ -25,7 +25,7 @@ export async function getUniversityProfile(
   try {
     const currentMonth = getCurrentCycleMonth();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('poll_results')
       .select('*')
       .eq('university_id', universityId)
@@ -110,7 +110,7 @@ export async function getTopUniversitiesInCategory(
   try {
     const currentMonth = getCurrentCycleMonth();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('poll_results')
       .select('*')
       .eq('category', category)
@@ -196,7 +196,7 @@ export async function getUniversityTrend(
   months = 6
 ): Promise<DatabaseResponse<UniversityTrend[]>> {
   try {
-    const query = supabase
+    const query = supabase!
       .from('monthly_aggregates')
       .select('*')
       .eq('university_id', universityId)
@@ -282,7 +282,7 @@ export async function compareUniversities(
     // Fetch head-to-head comparison
     const currentMonth = getCurrentCycleMonth();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('poll_results')
       .select('*')
       .in('university_id', [universityId1, universityId2])
@@ -374,7 +374,7 @@ export async function calculateSentimentScore(
   try {
     const currentMonth = getCurrentCycleMonth();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('poll_results')
       .select('percentage, rank')
       .eq('university_id', universityId)
@@ -442,11 +442,11 @@ export async function getRisingUniversities(
     const lastMonth = getPreviousCycleMonth();
 
     const [currentData, previousData] = await Promise.all([
-      supabase
+      supabase!
         .from('poll_results')
         .select('university_id, university_name, percentage')
         .eq('cycle_month', currentMonth),
-      supabase
+      supabase!
         .from('poll_results')
         .select('university_id, percentage')
         .eq('cycle_month', lastMonth),
@@ -564,7 +564,7 @@ export async function getUniversitySentimentStats(
   try {
     const currentMonth = getCurrentCycleMonth();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('poll_results')
       .select('university_id, category, percentage')
       .in('university_id', universityIds)

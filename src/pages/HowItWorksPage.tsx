@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
-import { PageContainer } from '../components/layout/PageContainer';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Card } from '../components/ui/Card';
 import { CheckCircle2, ArrowRight, ArrowLeft, Trophy, Vote, Unlock, BarChart3, Bot } from 'lucide-react';
 
 export const HowItWorksPage: React.FC = () => {
@@ -23,13 +24,13 @@ export const HowItWorksPage: React.FC = () => {
     {
       icon: Unlock,
       title: 'Unlock the Truth',
-      desc: 'Once you contribute, the system decrypts the real results, showing colors, names, and trends.',
+      desc: 'Once you contribute, the system decrypts the real results — colors, names, and trends.',
       details: ['Real-time racing charts', 'University branding', 'National rankings'],
     },
     {
       icon: Trophy,
       title: 'Rank Up',
-      desc: 'Complete all categories to earn the "Completionist" badge and unlock deep-dive comparison tools.',
+      desc: 'Complete all categories to earn the "Completionist" badge and unlock deep-dive tools.',
       details: ['Earn Voter XP', 'Unlock Radar Charts', 'Share results'],
     },
     {
@@ -44,92 +45,89 @@ export const HowItWorksPage: React.FC = () => {
 
   return (
     <AppLayout>
-      <PageContainer maxWidth="lg" title="How It Works">
-        
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-4 italic">THE PROTOCOL</h1>
-          <p className="text-slate-400 text-lg">Follow these steps to master the student truth engine.</p>
+      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-8">
+
+        {/* HEADER */}
+        <header className="text-center">
+          <Badge variant="neon" className="mb-3">The Protocol</Badge>
+          <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+            How UniPulse Works
+          </h1>
+        </header>
+
+        {/* STEP COUNTER */}
+        <div className="flex items-center justify-center gap-2">
+          {steps.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveStep(i)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                i === activeStep
+                  ? 'w-8 bg-cyan-400'
+                  : i < activeStep
+                  ? 'bg-cyan-700/60'
+                  : 'bg-slate-800'
+              }`}
+              aria-label={`Step ${i + 1}`}
+            />
+          ))}
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-12 items-start mb-20">
-          {/* STEP LIST */}
-          <div className="lg:col-span-4 space-y-4">
-            {steps.map((step, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveStep(i)}
-                className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex items-center gap-4 ${
-                  activeStep === i 
-                    ? 'bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.1)]' 
-                    : 'bg-slate-900 border-slate-800 opacity-60 hover:opacity-100'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${activeStep === i ? 'bg-cyan-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
-                  {i + 1}
-                </div>
-                <span className={`font-bold ${activeStep === i ? 'text-white' : 'text-slate-400'}`}>
-                  {step.title}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* STEP DISPLAY */}
-          <div className="lg:col-span-8">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 md:p-12 relative overflow-hidden h-full">
-              <div className="absolute top-0 right-0 p-8 opacity-10">
-                <ActiveIcon size={120} className="text-cyan-400" />
+        {/* ACTIVE STEP CARD */}
+        <Card className="p-6 sm:p-8 space-y-5 animate-fade-in-up" key={activeStep}>
+          <div className="flex items-start gap-4">
+            <div className="shrink-0 w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <ActiveIcon size={22} />
+            </div>
+            <div>
+              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-[0.18em] mb-1">
+                Step {activeStep + 1} of {steps.length}
               </div>
-
-              <div className="relative z-10 space-y-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold uppercase">
-                  Step {activeStep + 1} of {steps.length}
-                </div>
-                <h2 className="text-3xl font-black text-white">{steps[activeStep].title}</h2>
-                <p className="text-lg text-slate-400 leading-relaxed">
-                  {steps[activeStep].desc}
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                  {steps[activeStep].details.map((detail, j) => (
-                    <div key={j} className="flex items-center gap-3 text-slate-300 bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                      <CheckCircle2 size={18} className="text-cyan-400" />
-                      <span className="text-sm font-medium">{detail}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-4 pt-8">
-                  <Button 
-                    variant="ghost" 
-                    disabled={activeStep === 0}
-                    onClick={() => setActiveStep(prev => prev - 1)}
-                    leftIcon={<ArrowLeft size={18} />}
-                  >
-                    Previous
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    disabled={activeStep === steps.length - 1}
-                    onClick={() => setActiveStep(prev => prev + 1)}
-                    rightIcon={<ArrowRight size={18} />}
-                  >
-                    Next Step
-                  </Button>
-                </div>
-              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white">{steps[activeStep].title}</h2>
             </div>
           </div>
-        </div>
 
-        <section className="text-center py-12 border-t border-slate-800/50">
-          <h2 className="text-2xl font-bold text-white mb-6">Ready to contribute to the engine?</h2>
-          <Button size="lg" variant="neon" onClick={() => window.location.href = '/'}>
-            Start Now
+          <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
+            {steps[activeStep].desc}
+          </p>
+
+          <ul className="space-y-2">
+            {steps[activeStep].details.map((d, i) => (
+              <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
+                <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                {d}
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        {/* NAV */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveStep(prev => Math.max(0, prev - 1))}
+            leftIcon={<ArrowLeft size={14} />}
+            disabled={activeStep === 0}
+          >
+            Prev
           </Button>
-        </section>
-
-      </PageContainer>
+          {activeStep < steps.length - 1 ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setActiveStep(prev => Math.min(steps.length - 1, prev + 1))}
+              rightIcon={<ArrowRight size={14} />}
+            >
+              Next Step
+            </Button>
+          ) : (
+            <Button variant="success" size="sm" leftIcon={<Trophy size={14} />}>
+              Start Voting
+            </Button>
+          )}
+        </div>
+      </div>
     </AppLayout>
   );
 };

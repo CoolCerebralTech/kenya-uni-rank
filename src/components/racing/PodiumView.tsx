@@ -1,70 +1,103 @@
 import { memo } from 'react';
 import type { PollResult } from '../../types/models';
-import { Trophy, Medal } from 'lucide-react';
+import { Crown, Medal } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// 🔥 FIX: Memoize PodiumStep to prevent unnecessary re-renders
-const PodiumStep = memo<{ result: PollResult; place: number; height: string }>(
-  ({ result, place, height }) => (
-    <motion.div 
-      className="flex flex-col items-center w-full"
-      initial={{ y: 100, opacity: 0 }}
+// UniPulse v3 — refined podium. Uses framer-motion to spring-rise the steps
+// from below; first place floats a crown with a soft pulse.
+const PodiumStep = memo<{ result: PollResult; place: number; height: string }>(({ result, place, height }) => {
+  const baseGrad =
+    place === 1
+      ? 'from-amber-500/30 via-amber-500/10 to-transparent'
+      : place === 2
+      ? 'from-slate-500/30 via-slate-500/10 to-transparent'
+      : 'from-amber-900/30 via-amber-900/10 to-transparent';
+
+  return (
+    <motion.div
+      className="relative flex flex-col items-center w-full"
+      initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 100, damping: 15, delay: (3 - place) * 0.1 }}
+      transition={{ type: 'spring', stiffness: 110, damping: 14, delay: (3 - place) * 0.12 }}
     >
-      <div className={`mb-2 ${place === 1 && 'animate-bounce-slow'}`}>
-        {place === 1 && <Trophy className="w-10 h-10 text-yellow-400 fill-yellow-400" />}
-        {place === 2 && <Medal className="w-8 h-8 text-slate-300 fill-slate-300" />}
-        {place === 3 && <Medal className="w-8 h-8 text-amber-700 fill-amber-700" />}
-      </div>
-      <div 
-        className="w-16 h-16 rounded-full border-4 shadow-lg mb-2 flex items-center justify-center text-lg font-black text-white z-10" 
-        style={{ 
-          backgroundColor: result.universityColor, 
-          borderColor: place === 1 ? '#facc15' : '#1e293b' 
-        }}
+      {/* Logo mark */}
+      <div
+        className={`relative mb-1 ${place === 1 ? 'animate-pulse-soft' : ''}`}
       >
-        {result.universityShortName}
+        {place === 1 && (
+          <Crown className="absolute -top-4 left-1/2 -translate-x-1/2 w-5 h-5 text-amber-300 fill-amber-400 drop-shadow" />
+        )}
+        <div
+          className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 shadow-2xl flex items-center justify-center text-base font-black text-white z-10"
+          style={{
+            backgroundColor: result.universityColor,
+            borderColor: place === 1 ? '#fcd34d' : place === 2 ? '#cbd5e1' : '#a16207',
+          }}
+        >
+          {result.universityShortName}
+        </div>
       </div>
-      <div 
-        className={`w-full rounded-t-lg relative flex flex-col items-center justify-center p-2 text-center ${
-          place === 1 ? 'bg-slate-800' : 'bg-slate-900'
-        }`} 
+
+      {/* Podium step */}
+      <div
+        className={`relative w-full rounded-t-xl flex flex-col items-center justify-center p-2 text-center bg-gradient-to-b ${baseGrad} border-t-2 ${
+          place === 1 ? 'border-amber-400/60' : place === 2 ? 'border-slate-400/40' : 'border-amber-800/40'
+        }`}
         style={{ height }}
       >
-        <span className={`block text-2xl font-bold ${place === 1 ? 'text-white' : 'text-slate-300'}`}>
+        {place === 2 && <Medal className="absolute top-2 right-2 w-4 h-4 text-slate-400 fill-slate-500" />}
+        {place === 3 && <Medal className="absolute top-2 right-2 w-4 h-4 text-amber-800 fill-amber-900" />}
+        <span className={`text-xl sm:text-2xl font-black tabular ${place === 1 ? 'text-white' : 'text-slate-200'}`}>
           {result.percentage.toFixed(0)}%
         </span>
-        <span className="text-xs text-slate-500">{result.votes.toLocaleString()} votes</span>
+        <span className="text-[10px] text-slate-500 font-mono tabular uppercase tracking-wider">
+          {result.votes.toLocaleString()} votes
+        </span>
       </div>
     </motion.div>
-  )
-);
+  );
+});
 
 PodiumStep.displayName = 'PodiumStep';
 
-// 🔥 FIX: Memoize entire PodiumView
 export const PodiumView = memo<{ results: PollResult[] }>(({ results }) => {
   if (results.length < 3) {
     return (
       <div className="text-center text-slate-500 p-8">
-        Not enough data for a podium.
+        Not enough data for a podium yet.
       </div>
     );
   }
 
   const [first, second, third] = results;
-
   return (
-    <div className="flex items-end justify-center gap-2 h-72">
-      <div className="w-1/4 h-full flex items-end">
-        <PodiumStep result={second} place={2} height="65%" />
+    <div className="relative pt-6 pb-2">
+      {/* Names above the top of the podium */}
+      <div className="flex items-end justify-center gap-2 sm:gap-4 mb-3">
+        <div className="w-1/4 text-center">
+          <p className="text-sm font-bold text-slate-200 truncate">{second.universityName}</p>
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider">2nd</p>
+        </div>
+        <div className="w-1/3 text-center">
+          <p className="text-base sm:text-lg font-black text-white truncate">{first.universityName}</p>
+          <p className="text-[10px] text-amber-300 uppercase tracking-wider font-bold">★ Champion</p>
+        </div>
+        <div className="w-1/4 text-center">
+          <p className="text-sm font-bold text-slate-200 truncate">{third.universityName}</p>
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider">3rd</p>
+        </div>
       </div>
-      <div className="w-1/3 h-full flex items-end">
-        <PodiumStep result={first} place={1} height="90%" />
-      </div>
-      <div className="w-1/4 h-full flex items-end">
-        <PodiumStep result={third} place={3} height="45%" />
+      {/* Podium steps */}
+      <div className="flex items-end justify-center gap-2 sm:gap-4 h-56 sm:h-64">
+        <div className="w-1/4 h-full flex items-end">
+          <PodiumStep result={second} place={2} height="65%" />
+        </div>
+        <div className="w-1/3 h-full flex items-end">
+          <PodiumStep result={first} place={1} height="92%" />
+        </div>
+        <div className="w-1/4 h-full flex items-end">
+          <PodiumStep result={third} place={3} height="48%" />
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 // Layout & UI
 import { AppLayout } from '../components/layout/AppLayout';
-import { PageContainer } from '../components/layout/PageContainer';
 import { SectionDivider } from '../components/layout/SectionDivider';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -159,80 +158,79 @@ export const PollDetailPage: React.FC = () => {
 
   if (isLoading || !poll) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Spinner size="xl" variant="accent" />
-      </div>
+      <AppLayout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-center">
+          <Spinner size="xl" variant="accent" />
+          <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Loading the battle…</p>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
     <AppLayout>
-      <PageContainer maxWidth="lg" title={poll.question}>
-        
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 space-y-8">
+
         {/* HEADER */}
-        <div className="mb-8">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="text-slate-400 hover:text-white flex items-center gap-2 mb-4 text-sm transition-colors"
+        <header>
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white uppercase tracking-wider mb-4 transition-colors"
           >
-            <ArrowLeft size={16} /> Back
+            <ArrowLeft size={14} /> Back
           </button>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex-1">
               <Badge variant="neon" className="uppercase mb-3">{poll.category}</Badge>
-              <h1 className="text-3xl md:text-4xl font-black text-white">{poll.question}</h1>
-              {poll.description && <p className="text-slate-400 mt-2">{poll.description}</p>}
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-snug">
+                {poll.question}
+              </h1>
+              {poll.description && (
+                <p className="text-slate-400 text-sm mt-2 max-w-xl">{poll.description}</p>
+              )}
             </div>
             <div className="flex gap-2 shrink-0">
               <ShareButton title={poll.question} />
               {!hasVoted && (
-                <Button 
-                  variant="primary" 
-                  onClick={handleVoteClick} 
-                  leftIcon={<Vote size={16} />}
-                >
+                <Button variant="primary" onClick={handleVoteClick} leftIcon={<Vote size={16} />}>
                   Vote Now
                 </Button>
               )}
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* VOTE STATUS BANNER */}
+        {/* STATUS BANNER */}
         {hasVoted ? (
-          <div className="mb-6 p-4 bg-green-950/50 border border-green-500/30 rounded-xl flex items-center gap-3">
-            <Vote size={16} className="text-green-400" />
-            <p className="text-sm font-medium text-white">You've voted in this poll. Results unlocked.</p>
+          <div className="p-4 rounded-xl glass border border-emerald-500/30 flex items-center gap-3 animate-fade-in-up">
+            <Vote size={16} className="text-emerald-400 shrink-0" />
+            <p className="text-sm font-medium text-white">You've voted in this battle. Results unlocked.</p>
           </div>
         ) : (
-          <div className="mb-6 p-4 bg-amber-950/50 border border-amber-500/30 rounded-xl flex items-center gap-3">
-            <Lock size={16} className="text-amber-400" />
-            <p className="text-sm font-medium text-white flex-1">Results are locked. Vote to see community choices.</p>
+          <div className="p-4 rounded-xl glass border border-amber-500/30 flex items-center gap-3">
+            <Lock size={16} className="text-amber-400 shrink-0" />
+            <p className="text-sm font-medium text-white flex-1">Results are locked. Vote to see the community's truth.</p>
             <Button variant="secondary" size="sm" onClick={handleVoteClick}>Vote to Unlock</Button>
           </div>
         )}
 
         {/* MAIN RACE TRACK */}
-        <div className="mb-12">
+        <div>
           {hasVoted ? (
-            <RaceTrack 
-              results={results} 
-              totalVotes={totalVotes} 
-              userHasVoted={true}
-            />
+            <RaceTrack results={results} totalVotes={totalVotes} userHasVoted={true} />
           ) : (
             <LockedResultsCard onVoteClick={handleVoteClick} />
           )}
         </div>
 
-        {/* INSIGHTS (ONLY IF VOTED) */}
+        {/* INSIGHTS */}
         {shouldShowAnalytics && (
-          <div>
-            <SectionDivider label="Deep Dive Analysis" icon={<Info size={16} />} />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+          <section>
+            <SectionDivider label="Deep dive analysis" icon={<Info size={14} />} variant="neon" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 mt-4">
               <Card className="lg:col-span-2">
-                <h3 className="font-bold text-white flex items-center gap-2 mb-4">
-                  <TrendingUp size={18} /> Voting Momentum
+                <h3 className="font-bold text-white flex items-center gap-2 mb-4 text-sm uppercase tracking-wider">
+                  <TrendingUp size={16} className="text-cyan-400" /> Voting Momentum
                 </h3>
                 {historyData.length > 0 ? (
                   <TrendChart data={historyData} />
@@ -243,52 +241,52 @@ export const PollDetailPage: React.FC = () => {
                 )}
               </Card>
               <Card>
-                <h3 className="font-bold text-white flex items-center gap-2 mb-4">
-                  <Users size={18} /> Voter Types
+                <h3 className="font-bold text-white flex items-center gap-2 mb-4 text-sm uppercase tracking-wider">
+                  <Users size={16} className="text-violet-400" /> Voter Types
                 </h3>
                 {demographicData.length > 0 ? (
                   <PieChart data={demographicData} size={180} />
                 ) : (
                   <div className="h-48 flex items-center justify-center text-slate-500 text-sm">
-                    Collecting data...
+                    Collecting data…
                   </div>
                 )}
               </Card>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* RELATED POLLS */}
+        {/* RELATED BATTLES */}
         {relatedPolls.length > 0 && (
-          <div>
-            <SectionDivider label="Related Battles" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <section>
+            <SectionDivider label="Related battles" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               {relatedPolls.map(({ poll: relatedPoll, results: relatedResults }) => (
-                <MiniRacePreview 
-                  key={relatedPoll.id} 
-                  slug={relatedPoll.slug} 
-                  question={relatedPoll.question} 
-                  results={relatedResults} 
-                  totalVotes={relatedResults.reduce((sum, r) => sum + r.votes, 0)} 
+                <MiniRacePreview
+                  key={relatedPoll.id}
+                  slug={relatedPoll.slug}
+                  question={relatedPoll.question}
+                  results={relatedResults}
+                  totalVotes={relatedResults.reduce((sum, r) => sum + r.votes, 0)}
                 />
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* CTA SECTION */}
-        <div className="mt-16 text-center">
-          <p className="text-slate-400 mb-4">
-            {hasVoted ? "Want to influence other categories?" : "Your vote helps thousands of students."}
+        {/* CTA */}
+        <div className="pt-4 text-center">
+          <p className="text-slate-400 text-sm mb-4">
+            {hasVoted ? 'Influence other categories?' : 'Your vote helps thousands of students.'}
           </p>
-          <Button 
-            variant="primary" 
+          <Button
+            variant={hasVoted ? 'secondary' : 'primary'}
             onClick={() => navigate(hasVoted ? '/polls' : `/vote/${poll.category}`)}
           >
-            {hasVoted ? "Find More Battles" : "Cast Your Vote Now"}
+            {hasVoted ? 'Find More Battles' : 'Cast Your Vote Now'}
           </Button>
         </div>
-      </PageContainer>
+      </div>
     </AppLayout>
   );
 };

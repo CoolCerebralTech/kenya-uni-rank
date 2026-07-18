@@ -100,7 +100,7 @@ export async function getLatestVotes(limit = 50): Promise<DatabaseResponse<Recen
  */
 export async function getCategoryResults(category: PollCategory): Promise<DatabaseResponse<PollResult[]>> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('poll_results')
       .select('*')
       .eq('category', category)
@@ -275,7 +275,7 @@ export async function getHottestPoll(): Promise<DatabaseResponse<TrendingPoll>> 
 
 export async function getPollVoteHistory(pollId: string, days = 30): Promise<DatabaseResponse<{ label: string; value: number }[]>> {
   try {
-    const { data, error } = await supabase.rpc('get_daily_vote_counts', { p_poll_id: pollId, p_days: days });
+    const { data, error } = await supabase!.rpc('get_daily_vote_counts', { p_poll_id: pollId, p_days: days });
     if (error) return { success: false, data: null, error: error.message };
     const chartData = (data || []).map(item => ({
       label: new Date(item.vote_day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -289,7 +289,7 @@ export async function getPollVoteHistory(pollId: string, days = 30): Promise<Dat
 
 export async function getPollVoterDemographics(pollId: string): Promise<DatabaseResponse<{ label: string; value: number; color: string }[]>> {
   try {
-    const { data, error } = await supabase.rpc('get_voter_demographics', { p_poll_id: pollId });
+    const { data, error } = await supabase!.rpc('get_voter_demographics', { p_poll_id: pollId });
     if (error) return { success: false, data: null, error: error.message };
     const colorMap: Record<string, string> = { student: '#3b82f6', alumni: '#8b5cf6', applicant: '#10b981', other: '#64748b' };
     const chartData = (data || []).map(item => ({

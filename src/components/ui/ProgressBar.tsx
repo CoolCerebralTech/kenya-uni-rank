@@ -24,11 +24,11 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
   const colors = {
-    primary: "bg-blue-600",
+    primary: "bg-gradient-to-r from-cyan-500 to-teal-500",
     success: "bg-emerald-500",
     warning: "bg-amber-500",
     danger: "bg-red-500",
-    gradient: "bg-gradient-to-r from-cyan-500 to-blue-600",
+    gradient: "bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400",
   };
 
   const sizes = {
