@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
+import { SEO } from '../components/seo/SEO';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -83,8 +84,28 @@ export default function UniversityProfilePage() {
   // Google Maps embed URL (no API key needed — uses public embed)
   const mapFallbackUrl = `https://maps.google.com/maps?q=${uni.lat},${uni.lng}&z=15&output=embed`;
 
+  // SEO keywords for this university
+  const seoKeywords = [
+    uni.name,
+    uni.shortName,
+    `${uni.shortName} fees`,
+    `${uni.shortName} courses`,
+    `${uni.shortName} requirements`,
+    `${uni.shortName} location`,
+    `${uni.shortName} review`,
+    `${uni.shortName} university`,
+    'Kenya university',
+    'KCSE',
+    'KUCCPS',
+    'university comparison Kenya',
+    ...uni.tags.map(t => t.toLowerCase()),
+  ];
+
+  const seoDescription = `${uni.name} (${uni.shortName}) — ${uni.description} Fees: ${uni.feeRangePerSemester}/semester. ${uni.studentPopulation.toLocaleString()} students. ${uni.programs.slice(0, 4).join(', ')}. See what students really think.`;
+
   return (
     <AppLayout>
+      <SEO title={uni.name} description={seoDescription} keywords={seoKeywords} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
         {/* Back link */}
         <button

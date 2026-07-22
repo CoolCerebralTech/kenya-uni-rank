@@ -1,372 +1,327 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Layouts
 import { AppLayout } from '../components/layout/AppLayout';
-import { SectionDivider } from '../components/layout/SectionDivider';
-
-// Racing
-import { UniversityRacer } from '../components/racing/UniversityRacer';
-
-// Categories
-import { CategorySelector } from '../components/voting/CategorySelector';
-
-// Stats card
+import { SEO } from '../components/seo/SEO';
 import { Card } from '../components/ui/Card';
-
-// Demo data (always populated — even when Supabase is down)
+import { Badge } from '../components/ui/Badge';
+import { ProgressRing } from '../components/ui/ProgressRing';
 import {
-  DEMO_POLLS,
-  getDemoResultsForPoll,
-  getDemoPlatformStats,
-  getDemoRecentActivity,
-} from '../lib/demoData';
+  universitiesExtended,
+  getUniversityRankings,
+  getOverallScore,
+} from '../data/universitiesExtended';
+import {
+  Search,
+  MapPin,
+  Users,
+  Wallet,
+  Trophy,
+  ArrowRight,
+  Flame,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 
-import type { PollCategory, PollResult } from '../types/models';
-import { Activity, Users, Vote, Zap, Trophy, ChevronRight, Sparkles, TrendingUp } from 'lucide-react';
-
-// ----------------- Animated count-up -----------------
-// Suspends animation re-triggering on every value change (because the value
-// is treated as a target). Mount-triggered: kicks off once on mount so it
-// plays whenever the element renders, regardless of viewport position.
-const AnimatedCount: React.FC<{ value: number; className?: string }> = ({ value, className }) => {
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    const duration = 900;
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(Math.round(value * eased));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-
-  return <span className={`tabular ${className || ''}`}>{display.toLocaleString()}</span>;
-};
-
-// ----------------- Time-ago formatter -----------------
-function relTime(iso: string): string {
-  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-  return `${Math.floor(seconds / 86400)}d`;
-}
-
-// ----------------- Category meta -----------------
-// (Category grid is handled by the CategorySelector component below.)
-
-
-// =================================================================
-// HomePage — UniPulse v3
-// Designed for the interview demo: tight, premium, fully populated.
-// =================================================================
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'Public' | 'Private'>('all');
+  const [sortBy, setSortBy] = useState<'score' | 'intake' | 'fees' | 'name'>('score');
 
-  // --- Headline race (always populated — uses demo data) ---
-  const heroPoll = DEMO_POLLS.find(p => p.slug === 'best-vibes') || DEMO_POLLS[0];
-  const heroAgg = getDemoResultsForPoll(heroPoll.id);
-  const heroResults: PollResult[] = heroAgg.results.slice(0, 5);
+  const rankings = getUniversityRankings();
 
-  // --- Platform stats ---
-  const stats = getDemoPlatformStats();
+  const filtered = useMemo(() => {
+    let list = universitiesExtended.filter((u) => {
+      if (filterType !== 'all' && u.type !== filterType) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          u.name.toLowerCase().includes(q) ||
+          u.shortName.toLowerCase().includes(q) ||
+          u.location.toLowerCase().includes(q) ||
+          u.programs.some((p) => p.toLowerCase().includes(q)) ||
+          u.tags.some((t) => t.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
 
-  // --- Recent activity for the live feed ---
-  const activity = getDemoRecentActivity(8);
+    if (sortBy === 'score') list = [...list].sort((a, b) => getOverallScore(b) - getOverallScore(a));
+    if (sortBy === 'intake') list = [...list].sort((a, b) => b.firstYearIntake2026 - a.firstYearIntake2026);
+    if (sortBy === 'fees') list = [...list].sort((a, b) => a.feeMinPerSemester - b.feeMinPerSemester);
+    if (sortBy === 'name') list = [...list].sort((a, b) => a.shortName.localeCompare(b.shortName));
 
-  // --- Featured poll (rotating) ---
-  const featured = DEMO_POLLS.find(p => p.slug === 'recommend-to-friend') || DEMO_POLLS[0];
-  const featuredAgg = getDemoResultsForPoll(featured.id);
+    return list;
+  }, [search, filterType, sortBy]);
 
-  const handleCategorySelect = (category: PollCategory) => navigate(`/vote/${category}`);
+  const top3 = rankings.slice(0, 3);
+  const trendingTags = ['Strike culture', 'Best vibes', 'Most stable', 'Fee stress', 'Employable grads'];
 
   return (
     <AppLayout>
-      <div className="w-full max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 space-y-12 md:space-y-16">
-
-        {/* =========================================== HERO */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          <div className="lg:col-span-7 space-y-6 max-w-2xl">
-            {/* Status pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-cyan-500/30 text-[11px] font-bold uppercase tracking-wider text-cyan-300 animate-fade-in-up">
+      <SEO
+        title="UniPulse — Compare Kenyan Universities by Fees, Facilities & Real Student Sentiment"
+        description="Compare all Kenyan universities side by side — fees, facilities, campus vibes, strike history, and real student sentiment from X. UoN, KU, JKUAT, Strathmore, Moi, and more. Make the right choice before you enroll."
+        keywords={['Kenya university', 'university comparison Kenya', 'UoN', 'KU', 'JKUAT', 'Strathmore', 'university fees Kenya', 'KUCCPS', 'KCSE', 'campus vibes', 'HELB', 'best university Kenya']}
+      />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+        {/* ======== HERO ======== */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="glass rounded-3xl p-6 md:p-10 mb-8 overflow-hidden relative"
+        >
+          <div className="absolute inset-0 opacity-20 pointer-events-none bg-gradient-to-br from-cyan-500 via-transparent to-emerald-500" />
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 mb-4 text-[10px] font-bold text-cyan-400 uppercase tracking-[0.18em]">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
               </span>
-              <span>Live Pulse • July 2026 Cycle</span>
+              <span>The student truth engine</span>
             </div>
-
-            {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.05] animate-fade-in-up">
-              The real truth about<br />
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.08] mb-3">
+              Compare Kenyan universities<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-400">
-                Kenya's campuses.
+                before you enroll.
               </span>
             </h1>
-
-            {/* Subhead */}
-            <p className="text-base sm:text-lg text-slate-400 leading-relaxed max-w-xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-              Stop guessing. See what students actually think — fee stress, strike culture, hostel conditions, campus vibes. Real votes from real students, no polished brochures. From <strong className="text-white">UoN</strong> to <strong className="text-white">Juja</strong>, the unfiltered pulse of Kenyan campuses.
+            <p className="text-sm sm:text-base text-slate-400 leading-relaxed max-w-xl mb-5">
+              Real fees, real facilities, real vibes. See what students actually think —
+              from HELB delays to strike culture to campus social life. No polished brochures.
             </p>
-
-            {/* CTAs */}
-            <div className="flex flex-wrap gap-3 pt-2 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => navigate('/polls')}
-                className="group inline-flex items-center gap-2 h-12 px-6 rounded-xl text-base font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_30px_rgba(34,211,238,0.3)] hover:shadow-[0_0_40px_rgba(34,211,238,0.45)] hover:-translate-y-0.5"
+                onClick={() => document.getElementById('uni-grid')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center gap-2 h-11 px-5 rounded-xl text-sm font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_30px_rgba(34,211,238,0.3)] hover:-translate-y-0.5"
               >
-                <Vote size={18} />
-                Cast your vote
-                <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5" />
+                Explore universities <ArrowRight size={16} />
               </button>
               <button
-                onClick={() => navigate('/leaderboard')}
-                className="inline-flex items-center gap-2 h-12 px-6 rounded-xl text-base font-semibold text-slate-200 bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 hover:bg-slate-800/40 transition-all"
+                onClick={() => navigate('/compare')}
+                className="inline-flex items-center gap-2 h-11 px-5 rounded-xl text-sm font-bold text-white border border-slate-700 bg-slate-900/60 hover:bg-slate-800/80 hover:border-slate-600 transition-all"
               >
-                <Trophy size={18} />
-                View leaderboard
-              </button>
-            </div>
-
-            {/* Quick stats */}
-            <div className="flex items-stretch gap-4 pt-6 border-t border-slate-800/60 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-              <Stat>
-                <StatValue>
-                  <AnimatedCount value={stats.totalVotes} className="text-white" />
-                </StatValue>
-                <StatLabel>Votes cast</StatLabel>
-              </Stat>
-              <Divider />
-              <Stat>
-                <StatValue>
-                  <AnimatedCount value={stats.totalUniversities} className="text-white" />
-                </StatValue>
-                <StatLabel>Universities</StatLabel>
-              </Stat>
-              <Divider />
-              <Stat>
-                <StatValue>
-                  <span className="text-emerald-400">Live</span>
-                </StatValue>
-                <StatLabel>System status</StatLabel>
-              </Stat>
-            </div>
-          </div>
-
-          {/* Race preview — refined card with demo data */}
-          <div className="lg:col-span-5 relative animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
-            <div className="absolute -inset-6 bg-gradient-to-br from-cyan-600/15 to-emerald-500/10 blur-3xl rounded-full opacity-60 pointer-events-none" />
-            <div className="relative glass rounded-2xl p-5 sm:p-6 overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  </span>
-                  <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-[0.15em]">Live Race</h3>
-                </div>
-                <span className="text-[10px] font-mono text-slate-500 uppercase">{heroAgg.totalVotes.toLocaleString()} votes</span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white mb-5 leading-snug">
-                {heroPoll.question}
-              </h2>
-              <div className="space-y-3.5">
-                {heroResults.map((r) => (
-                  <UniversityRacer
-                    key={r.universityId}
-                    result={r}
-                    isLeader={r.rank === 1}
-                    isLocked={false}
-                  />
-                ))}
-              </div>
-              <button
-                onClick={() => navigate('/poll/best-vibes')}
-                className="mt-5 w-full h-10 rounded-lg text-xs font-bold uppercase tracking-wider text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/40 transition-colors flex items-center justify-center gap-1.5"
-              >
-                See full results <ChevronRight size={14} />
+                Compare side-by-side
               </button>
             </div>
           </div>
-        </section>
+        </motion.div>
 
-        {/* =========================================== CATEGORIES */}
-        <section>
-          <SectionDivider label="Select your battleground" icon={<Zap size={14} />} variant="neon" />
-          <div className="mt-4">
-            <CategorySelector onSelect={handleCategorySelect} />
-          </div>
-        </section>
-
-        {/* =========================================== FEATURED + LIVE FEED + INSIGHTS */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
-          {/* Featured Battle */}
-          <div className="lg:col-span-1">
-            <SectionLabel icon={<Vote size={14} className="text-amber-400" />} label="Featured battle" />
-            <Card variant="glass" className="h-full p-5 flex flex-col group cursor-pointer hover:-translate-y-1 transition-transform" onClick={() => navigate(`/poll/${featured.slug}`)}>
-              {/* Badge */}
-              <div className="flex items-start justify-between mb-3">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
-                  <TrendingUp size={10} /> Hot
-                </span>
-                <span className="text-[10px] font-mono text-slate-500 uppercase">{featured.category}</span>
-              </div>
-              <h3 className="text-base font-bold text-white mb-1 leading-snug group-hover:text-cyan-300 transition-colors">
-                {featured.question}
-              </h3>
-              <p className="text-xs text-slate-500 mb-4 flex-grow line-clamp-2">
-                {featured.description}
-              </p>
-              <div className="space-y-1.5 mb-4">
-                {featuredAgg.results.slice(0, 3).map((r) => (
-                  <div key={r.universityId} className="flex items-center gap-2 text-xs">
-                    <span className="font-mono text-slate-600 w-4 text-right">{r.rank}.</span>
-                    <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.universityColor }} />
-                    <span className={`flex-grow truncate ${r.rank === 1 ? 'text-white font-semibold' : 'text-slate-400'}`}>
-                      {r.universityName}
-                    </span>
-                    <span className="font-mono tabular text-slate-300">{r.percentage.toFixed(1)}%</span>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); navigate(`/poll/${featured.slug}`); }}
-                className="w-full h-10 rounded-lg text-xs font-bold uppercase tracking-wider text-white bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 transition-colors flex items-center justify-center gap-1.5"
-              >
-                Cast your vote <ChevronRight size={14} />
-              </button>
-            </Card>
-          </div>
-
-          {/* Live Feed */}
-          <div className="lg:col-span-1">
-            <SectionLabel icon={<Activity size={14} className="text-emerald-400" />} label="Real-time pulse" />
-            <Card variant="glass" className="h-full p-5 overflow-hidden">
-              <div className="space-y-3 max-h-[360px] overflow-y-auto no-scrollbar">
-                {activity.map((a, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 text-sm animate-fade-in-up"
-                    style={{ animationDelay: `${i * 0.04}s` }}
-                  >
-                    <div
-                      className="h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-md"
-                      style={{ backgroundColor: a.university_color }}
-                    >
-                      {a.university_short_name.slice(0, 2)}
+        {/* ======== TOP 3 PODIUM ======== */}
+        <div className="mb-8">
+          <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+            <Trophy size={16} className="text-amber-400" /> Top Ranked Universities
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {top3.map((uni, i) => {
+              const score = getOverallScore(uni);
+              return (
+                <motion.button
+                  key={uni.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => navigate(`/university/${uni.slug}`)}
+                  className="text-left"
+                >
+                  <Card padding="md" hoverEffect className="h-full relative overflow-hidden">
+                    {i === 0 && (
+                      <div className="absolute top-0 right-0 px-2 py-1 bg-amber-500/20 text-amber-400 text-[9px] font-bold uppercase tracking-wider rounded-bl-lg">
+                        #1 Best
+                      </div>
+                    )}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black text-white shrink-0"
+                        style={{ backgroundColor: uni.color }}
+                      >
+                        {uni.shortName.slice(0, 2)}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-white truncate">{uni.shortName}</h3>
+                        <p className="text-[10px] text-slate-500 flex items-center gap-0.5">
+                          <MapPin size={10} /> {uni.location}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-grow min-w-0">
-                      <p className="text-xs text-slate-300 truncate">
-                        <span className="font-semibold text-white capitalize">{a.voter_type}</span>{' '}voted for{' '}
-                        <span className="font-semibold" style={{ color: a.university_color }}>{a.university_short_name}</span>
-                      </p>
-                      <p className="text-[10px] text-slate-600 uppercase tracking-wide">{relTime(a.created_at)} ago</p>
+                    <div className="flex items-center justify-between">
+                      <ProgressRing value={score} size={52} stroke={5} />
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-1">
+                          <Wallet size={10} /> {uni.feeRangePerSemester.split('–')[0].replace('KSh ', 'KSh')}
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                          <Users size={10} /> {uni.studentPopulation.toLocaleString()}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
+                  </Card>
+                </motion.button>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Insights */}
-          <div className="lg:col-span-1">
-            <SectionLabel icon={<Users size={14} className="text-cyan-400" />} label="Platform insights" />
-            <div className="space-y-4">
-              <InsightCard
-                label="Most discussed"
-                value="Fees & HELB"
-                sub="Trending on X"
-                accentClass="text-amber-300"
-                icon={<Zap size={16} className="text-amber-400" />}
-              />
-              <InsightCard
-                label="Most roasted"
-                value="UoN"
-                sub="Strike culture & politics"
-                accentClass="text-cyan-300"
-                icon={<Trophy size={16} className="text-cyan-400" />}
-              />
-              <InsightCard
-                label="Most stable"
-                value="Strathmore"
-                sub="Fewest strike complaints"
-                accentClass="text-emerald-300"
-                icon={<Sparkles size={16} className="text-emerald-400" />}
-              />
-            </div>
+        {/* ======== TRENDING TAGS ======== */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Flame size={14} className="text-amber-400" />
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trending on X</span>
           </div>
-        </section>
+          <div className="flex flex-wrap gap-2">
+            {trendingTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => { setSearch(tag); setSortBy('score'); }}
+                className="px-3 py-1.5 rounded-full text-xs font-medium bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/30 transition-all"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {/* =========================================== PLATFORM STATS */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <BigStat label="Total votes" value={stats.totalVotes} icon={<Vote size={16} />} />
-          <BigStat label="Universities" value={stats.totalUniversities} icon={<Users size={16} />} />
-          <BigStat label="Live polls" value={stats.totalPolls} icon={<Zap size={16} />} />
-          <BigStat label="Categories" value={stats.categoriesCount} icon={<Trophy size={16} />} />
-        </section>
+        {/* ======== SEARCH + FILTER BAR ======== */}
+        <div className="glass rounded-2xl p-4 mb-6 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search by name, location, program, or tag..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-10 pl-9 pr-4 rounded-xl bg-slate-900/60 border border-slate-800 text-sm text-white placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none transition-colors"
+            />
+          </div>
+          <div className="flex gap-2">
+            {(['all', 'Public', 'Private'] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`
+                  px-3 h-10 rounded-xl text-xs font-bold transition-all
+                  ${filterType === type
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                    : 'bg-slate-900/60 text-slate-500 border border-slate-800 hover:text-slate-300'
+                  }
+                `}
+              >
+                {type === 'all' ? 'All' : type}
+              </button>
+            ))}
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="h-10 px-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-bold text-slate-400 focus:border-cyan-500/50 focus:outline-none transition-colors cursor-pointer"
+          >
+            <option value="score">Sort: Score</option>
+            <option value="intake">Sort: Intake</option>
+            <option value="fees">Sort: Fees</option>
+            <option value="name">Sort: Name</option>
+          </select>
+        </div>
 
-        {/* =========================================== DISCLAIMER */}
-        <section className="pt-8 border-t border-slate-800/40 text-center">
+        {/* ======== UNIVERSITY GRID ======== */}
+        <div id="uni-grid">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-white">
+              {filtered.length} {filtered.length === 1 ? 'University' : 'Universities'}
+            </h2>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">
+              {sortBy === 'score' ? 'By overall score' : sortBy === 'intake' ? 'By 2026 intake' : sortBy === 'fees' ? 'By lowest fees' : 'Alphabetical'}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((u, i) => {
+              const score = getOverallScore(u);
+              const rank = rankings.findIndex((r) => r.id === u.id) + 1;
+              return (
+                <motion.button
+                  key={u.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  onClick={() => navigate(`/university/${u.slug}`)}
+                  className="text-left"
+                >
+                  <Card padding="md" hoverEffect className="h-full">
+                    {/* Header row */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center text-base font-black text-white shrink-0"
+                        style={{ backgroundColor: u.color }}
+                      >
+                        {u.shortName.slice(0, 2)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-sm font-bold text-white truncate">{u.shortName}</h3>
+                          <Badge variant="default" size="sm">#{rank}</Badge>
+                        </div>
+                        <p className="text-[10px] text-slate-500 flex items-center gap-0.5 mt-0.5">
+                          <MapPin size={10} /> {u.location}
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <ProgressRing value={score} size={44} stroke={4} />
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-[11px] text-slate-500 leading-relaxed mb-3 line-clamp-2">
+                      {u.description}
+                    </p>
+
+                    {/* Mini stats */}
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="text-center">
+                        <div className="text-[9px] text-slate-600 uppercase tracking-wider font-bold mb-0.5">Fees</div>
+                        <div className="text-[10px] font-bold text-white truncate">{u.feeRangePerSemester.split('–')[0].replace('KSh ', '')}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[9px] text-slate-600 uppercase tracking-wider font-bold mb-0.5">Students</div>
+                        <div className="text-[10px] font-bold text-white">{u.studentPopulation > 999 ? `${(u.studentPopulation / 1000).toFixed(0)}k` : u.studentPopulation}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[9px] text-slate-600 uppercase tracking-wider font-bold mb-0.5">Intake</div>
+                        <div className="text-[10px] font-bold text-white">{u.firstYearIntake2026 > 999 ? `${(u.firstYearIntake2026 / 1000).toFixed(1)}k` : u.firstYearIntake2026}</div>
+                      </div>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-1">
+                      {u.tags.slice(0, 3).map((tag) => (
+                        <span key={tag} className={`
+                          px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider
+                          ${/strike|worst|roast|missing|stress/i.test(tag)
+                            ? 'bg-red-500/10 text-red-400'
+                            : /best|stable|employable|strong|tech/i.test(tag)
+                              ? 'bg-emerald-500/10 text-emerald-400'
+                              : 'bg-slate-800/60 text-slate-500'
+                          }
+                        `}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </Card>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ======== DISCLAIMER ======== */}
+        <div className="pt-8 mt-8 border-t border-slate-800/40 text-center">
           <p className="text-xs text-slate-500 max-w-2xl mx-auto leading-relaxed">
-            <strong className="text-slate-400">Disclaimer:</strong> UniPulse rankings reflect real-time student sentiment — not official university rankings. A decision-aid, not a verdict.
+            <strong className="text-slate-400">Disclaimer:</strong> UniPulse combines official university data with real student sentiment from X (Twitter). Scores reflect student perception — not official rankings. A decision-aid, not a verdict.
           </p>
           <p className="text-[10px] text-slate-600 mt-2 uppercase tracking-wider">
-            v3.0 • The Student Truth Engine
+            v4.0 • The Student Truth Engine
           </p>
-        </section>
+        </div>
       </div>
     </AppLayout>
   );
 };
-
-// ---------- Small presentational helpers ----------
-const Stat: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex flex-col">{children}</div>
-);
-const StatValue: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="text-2xl sm:text-3xl font-bold leading-none">{children}</div>
-);
-const StatLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="text-[10px] text-slate-500 uppercase tracking-[0.15em] font-bold mt-1.5">{children}</div>
-);
-const Divider: React.FC = () => <div className="w-px h-10 bg-slate-800/60 self-center" />;
-
-const SectionLabel: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
-  <div className="flex items-center gap-2 mb-4">
-    {icon}
-    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-[0.15em]">{label}</h3>
-  </div>
-);
-
-const InsightCard: React.FC<{
-  label: string;
-  value: string;
-  sub: string;
-  accentClass: string;
-  icon: React.ReactNode;
-}> = ({ label, value, sub, accentClass, icon }) => (
-  <Card variant="glass" className="p-4 group hover:-translate-y-0.5 transition-transform">
-    <div className="flex items-center justify-between mb-1">
-      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{label}</span>
-      <div className="opacity-80 group-hover:opacity-100 transition-opacity">{icon}</div>
-    </div>
-    <div className={`text-xl font-bold ${accentClass}`}>{value}</div>
-    <div className="text-[11px] text-slate-500 mt-0.5 font-mono tabular">{sub}</div>
-  </Card>
-);
-
-const BigStat: React.FC<{ label: string; value: number; icon: React.ReactNode }> = ({ label, value, icon }) => (
-  <Card variant="glass" className="p-4 sm:p-5 text-center">
-    <div className="flex items-center justify-center mb-2 text-cyan-400/70">{icon}</div>
-    <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tabular">
-      <AnimatedCount value={value} />
-    </div>
-    <div className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider font-bold">{label}</div>
-  </Card>
-);
