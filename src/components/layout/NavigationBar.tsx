@@ -1,27 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Trophy, BarChart3, Vote, Sparkles } from 'lucide-react';
+import { Home, GitCompare, Search, Info, BarChart3 } from 'lucide-react';
 
-// UniPulse v3 — refined bottom navigation for mobile.
-// Active indicator: filled pill background + cyan accent + soft glow.
-// Height respects iOS safe-area.
-// BUG FIX: removed the inner <NavLink> rendering as indicator (invalid JSX double
-// NavLink children). Now using a single NavLink with active-styled ::before bar.
+// UniPulse v4 — mobile bottom nav. Old voting/polls/trends tabs removed.
+// 5 tabs: Home, Compare, Explore, Rankings, About.
 
-interface NavItem {
-  name: string;
-  icon: React.FC<{ size?: number; strokeWidth?: number; className?: string }>;
-  path: string;
-  end?: boolean;
-  accent?: boolean;
-}
-
-const NAV_ITEMS: NavItem[] = [
+const NAV_ITEMS: Array<{ name: string; icon: React.FC<{ size?: number; strokeWidth?: number; className?: string }>; path: string; end?: boolean }> = [
   { name: 'Home', icon: Home, path: '/', end: true },
-  { name: 'Vote', icon: Vote, path: '/polls' },
-  { name: 'Ranks', icon: Trophy, path: '/leaderboard' },
-  { name: 'Trends', icon: BarChart3, path: '/trends' },
-  { name: 'About', icon: Sparkles, path: '/about' },
+  { name: 'Compare', icon: GitCompare, path: '/compare' },
+  { name: 'Explore', icon: Search, path: '/explore' },
+  { name: 'Ranks', icon: BarChart3, path: '/rankings' },
+  { name: 'About', icon: Info, path: '/about' },
 ];
 
 export const NavigationBar: React.FC = () => {
@@ -31,7 +20,7 @@ export const NavigationBar: React.FC = () => {
       aria-label="Primary mobile navigation"
     >
       <div className="flex justify-around items-stretch h-14">
-        {NAV_ITEMS.map(({ name, icon: Icon, path, end, accent }) => (
+        {NAV_ITEMS.map(({ name, icon: Icon, path, end }) => (
           <NavLink
             key={name}
             to={path}
@@ -39,12 +28,11 @@ export const NavigationBar: React.FC = () => {
             className={({ isActive }) => `
               relative flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors duration-200
               ${isActive ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}
-              ${accent ? 'accent-glow' : ''}
             `}
           >
             {({ isActive }) => (
               <>
-                {/* Active indicator pill — top of icon */}
+                {/* Active indicator bar — top of icon */}
                 <span
                   aria-hidden
                   className={`absolute top-0 h-1 w-8 rounded-b-full transition-all duration-300 ${

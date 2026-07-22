@@ -2,7 +2,7 @@ import React from 'react';
 import { Twitter, Github, Linkedin, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-// UniPulse v3 — refined footer. Tighter spacing, cleaner headings.
+// UniPulse v4 — refined footer. Only links to working pages.
 export const Footer: React.FC = () => {
   return (
     <footer className="hidden md:block w-full border-t border-slate-800/50 bg-slate-950/30 pt-8 pb-6">
@@ -16,7 +16,8 @@ export const Footer: React.FC = () => {
               </span>
             </div>
             <p className="text-slate-500 text-xs leading-relaxed max-w-xs mb-3">
-              The student-powered truth engine. Helping Kenyan students find their perfect university match through real data, not polished brochures.
+              The student truth engine. Compare Kenyan universities by fees, facilities, vibes,
+              and real student sentiment from X. Not polished brochures.
             </p>
             <div className="flex gap-3">
               <a href="https://x.com/h_hawkins8" className="text-slate-500 hover:text-cyan-400 transition-colors" aria-label="Twitter"><Twitter size={16} /></a>
@@ -29,10 +30,9 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.18em] mb-3">Platform</h4>
             <ul className="space-y-1.5 text-xs text-slate-500">
-              <li><Link to="/polls" className="hover:text-cyan-400 transition-colors">Live Polls</Link></li>
-              <li><Link to="/leaderboard" className="hover:text-cyan-400 transition-colors">Leaderboard</Link></li>
+              <li><Link to="/" className="hover:text-cyan-400 transition-colors">Home</Link></li>
+              <li><Link to="/compare" className="hover:text-cyan-400 transition-colors">Compare</Link></li>
               <li><Link to="/about" className="hover:text-cyan-400 transition-colors">About</Link></li>
-              <li><Link to="/how-it-works" className="hover:text-cyan-400 transition-colors">How it Works</Link></li>
             </ul>
           </div>
 
@@ -55,7 +55,7 @@ export const Footer: React.FC = () => {
             <Heart size={10} className="text-rose-500 fill-rose-500" />
             <span>for Kenyan Students</span>
           </div>
-          <p>v3.0.0</p>
+          <p>v4.0</p>
         </div>
       </div>
     </footer>

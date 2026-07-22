@@ -1,29 +1,20 @@
 import React, { useEffect } from 'react';
-import { 
-  createBrowserRouter, 
-  RouterProvider, 
+import {
+  createBrowserRouter,
+  RouterProvider,
   useLocation,
   Outlet,
-  Navigate
+  Navigate,
 } from 'react-router-dom';
 
 // --- PROVIDERS ---
 import { ToastProvider } from './hooks/useToast';
 
-// --- PAGES ---
+// --- PAGES (v4: only dashboard-relevant pages) ---
 import { HomePage } from './pages/HomePage';
-import { VotingPage } from './pages/VotingPage';
-import { PollDetailPage } from './pages/PollDetailPage';
-import { ResultsPage } from './pages/ResultsPage';
-import { LeaderboardPage } from './pages/LeaderboardPage';
-import { CategoryDetailPage } from './pages/CategoryDetailPage';
 import { ComparisonPage } from './pages/ComparisonPage';
 import UniversityProfilePage from './pages/UniversityProfilePage';
-import { TrendsPage } from './pages/TrendsPage';
-import { SearchPage } from './pages/SearchPage';
-import { ProfilePage } from './pages/ProfilePage';
 import { AboutPage } from './pages/AboutPage';
-import { HowItWorksPage } from './pages/HowItWorksPage';
 import { ErrorPage } from './pages/ErrorPage';
 
 // --- UTILITIES ---
@@ -42,88 +33,42 @@ const RootLayout = () => (
   </>
 );
 
-// --- ROUTER CONFIGURATION ---
+// --- ROUTER (v4) ---
+// Old routes (/polls, /vote/*, /poll/*, /results/*, /category/*, /leaderboard,
+// /trends, /profile, /search, /voting, /how-it-works) all redirect home.
+// Only working routes: /, /compare, /university/:id, /about, /explore, /rankings.
 const router = createBrowserRouter([
   {
-    path: "/",
+    path: '/',
     element: <RootLayout />,
-    errorElement: <ErrorPage />, 
+    errorElement: <ErrorPage />,
     children: [
-      {
-        index: true,
-        element: <HomePage />,
-      },
-      // 1. Voting Routes
-      {
-        path: "vote/:category",
-        element: <VotingPage />,
-      },
-      {
-        // FIX: Handle generic "/voting" or "/polls" clicks 
-        // by sending them to the Search/Discovery page
-        path: "voting",
-        element: <SearchPage />,
-      },
-      {
-        path: "polls",
-        element: <SearchPage />,
-      },
-      
-      // 2. Results & Details
-      {
-        path: "poll/:slug",
-        element: <PollDetailPage />,
-      },
-      {
-        path: "results/:category?",
-        element: <ResultsPage />,
-      },
-      {
-        path: "category/:category",
-        element: <CategoryDetailPage />,
-      },
+      // Main pages
+      { index: true, element: <HomePage /> },
+      { path: 'compare', element: <ComparisonPage /> },
+      { path: 'university/:id', element: <UniversityProfilePage /> },
+      { path: 'about', element: <AboutPage /> },
 
-      // 3. Analytics & Rankings
-      {
-        path: "leaderboard",
-        element: <LeaderboardPage />,
-      },
-      {
-        path: "trends",
-        element: <TrendsPage />,
-      },
-      {
-        path: "compare",
-        element: <ComparisonPage />,
-      },
-      {
-        path: "university/:id",
-        element: <UniversityProfilePage />,
-      },
+      // /explore and /rankings both just redirect to home
+      // (home already has the search/filter/grid — they're the same view)
+      { path: 'explore', element: <Navigate to="/" replace /> },
+      { path: 'rankings', element: <Navigate to="/" replace /> },
 
-      // 4. User & Info
-      {
-        path: "profile",
-        element: <ProfilePage />,
-      },
-      {
-        path: "search",
-        element: <SearchPage />,
-      },
-      {
-        path: "about",
-        element: <AboutPage />,
-      },
-      {
-        path: "how-it-works",
-        element: <HowItWorksPage />,
-      },
+      // Redirect all old routes to home
+      { path: 'polls', element: <Navigate to="/" replace /> },
+      { path: 'voting', element: <Navigate to="/" replace /> },
+      { path: 'vote/:category', element: <Navigate to="/" replace /> },
+      { path: 'poll/:slug', element: <Navigate to="/" replace /> },
+      { path: 'results/:category?', element: <Navigate to="/" replace /> },
+      { path: 'category/:category', element: <Navigate to="/" replace /> },
+      { path: 'leaderboard', element: <Navigate to="/" replace /> },
+      { path: 'trends', element: <Navigate to="/" replace /> },
+      { path: 'search', element: <Navigate to="/" replace /> },
+      { path: 'profile', element: <Navigate to="/" replace /> },
+      { path: 'how-it-works', element: <Navigate to="/about" replace /> },
 
-      // 5. Fallback for any other typed URL
-      {
-        path: "*",
-        element: <Navigate to="/" replace />,
-      }
+      // Fallback
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ]);
