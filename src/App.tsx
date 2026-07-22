@@ -18,7 +18,7 @@ import { ResultsPage } from './pages/ResultsPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { CategoryDetailPage } from './pages/CategoryDetailPage';
 import { ComparisonPage } from './pages/ComparisonPage';
-import { UniversityProfilePage } from './pages/UniversityProfilePage';
+import UniversityProfilePage from './pages/UniversityProfilePage';
 import { TrendsPage } from './pages/TrendsPage';
 import { SearchPage } from './pages/SearchPage';
 import { ProfilePage } from './pages/ProfilePage';

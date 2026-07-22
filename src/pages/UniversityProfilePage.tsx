@@ -1,216 +1,346 @@
-import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-
-// Layout & UI
 import { AppLayout } from '../components/layout/AppLayout';
-import { PageContainer } from '../components/layout/PageContainer';
-import { SectionDivider } from '../components/layout/SectionDivider';
 import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Spinner } from '../components/ui/FullScreenLoader';
 import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { SectionDivider } from '../components/layout/SectionDivider';
+import { ProgressRing } from '../components/ui/ProgressRing';
+import {
+  getExtendedUniversityBySlug,
+  getUniversityRankings,
+  getOverallScore,
+} from '../data/universitiesExtended';
+import {
+  Users,
+  GraduationCap,
+  MapPin,
+  Calendar,
+  Building2,
+  Globe,
+  ArrowLeft,
+  ArrowRight,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  Trophy,
+  Wallet,
+  Home,
+  BookOpen,
+  Briefcase,
+  Sparkles,
+  ExternalLink,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 
-// Visualization
-import { UniversityProfile } from '../components/results/UniversityProfile';
-import { TrendChart } from '../components/results/TrendChart';
-import { RivalryTracker } from '../components/features/RivalryTracker';
-import { HeatMap } from '../components/analytics/HeatMap';
-import { ShareButton } from '../components/results/ShareButton';
-
-// Services & Data
-import { getUniversityById } from '../services/university.service';
-import { getUniversityProfile, getUniversityTrend, compareUniversities } from '../services/insights.service';
-import { getUniversityRankings } from '../services/analytics.service';
-import type { University, UniversityProfile as ProfileData } from '../types/models';
-import { ArrowLeft, Vote, TrendingUp, Swords } from 'lucide-react';
-import { useToast } from '../hooks/useToast';
-
-interface FullProfile {
-  university: University;
-  rival: University | null; // Made nullable
-  profile: ProfileData;
-  trendData: { label: string; value: number }[];
-  heatMapData: { x: string; y: string; value: number }[];
-  rivalryScore: { score1: number; score2: number };
-  rank: number;
-}
-
-export const UniversityProfilePage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+// ============================================================================
+// UniversityProfilePage — SofaScore-style dashboard for each university
+// ============================================================================
+export default function UniversityProfilePage() {
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  useToast();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [profileData, setProfileData] = useState<FullProfile | null>(null);
+  const uni = slug ? getExtendedUniversityBySlug(slug) : undefined;
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadProfile = async () => {
-      if (!id) return;
-      setIsLoading(true);
-
-      try {
-        const university = getUniversityById(id);
-        if (!university) {
-          navigate('/404');
-          return;
-        }
-
-        const [profileRes, trendRes, leaderboardRes] = await Promise.all([
-          getUniversityProfile(id),
-          getUniversityTrend(id),
-          getUniversityRankings()
-        ]);
-        
-        if (!isMounted) return;
-
-        // Rank & Rival Calculation
-        let rank = 0;
-        let rival: University | null = null;
-        if (leaderboardRes.success && leaderboardRes.data && leaderboardRes.data.length > 0) {
-          const rankings = leaderboardRes.data;
-          const currentIndex = rankings.findIndex(r => r.id === id);
-          rank = currentIndex !== -1 ? currentIndex + 1 : 0;
-          
-          // Safety Check: Find rival (the person above you, or the person below you if you are #1)
-          let rivalEntry = null;
-          if (currentIndex > 0) {
-            rivalEntry = rankings[currentIndex - 1];
-          } else if (rankings.length > 1) {
-            rivalEntry = rankings[1];
-          }
-          
-          if (rivalEntry) rival = getUniversityById(rivalEntry.id) || null;
-        }
-
-        // Rivalry Stats
-        let rivalryScore = { score1: 0, score2: 0 };
-        if (rival) {
-            const compRes = await compareUniversities(id, rival.id);
-            if (compRes.success && compRes.data) {
-                rivalryScore = {
-                    score1: compRes.data.headToHead.reduce((sum, cat) => sum + cat.uni1Wins, 0),
-                    score2: compRes.data.headToHead.reduce((sum, cat) => sum + cat.uni2Wins, 0),
-                };
-            }
-        }
-
-        // Charts data mapping
-        const trendData = (trendRes.data || []).map(t => ({
-          label: t.cycleMonth.split('-')[1], // Just the month
-          value: t.percentage
-        })).reverse();
-
-        // Heatmap mapping
-        const allStats = [...(profileRes.data?.strengths || []), ...(profileRes.data?.weaknesses || [])];
-        const heatMapData = allStats.map(cat => ({
-          x: cat.category,
-          y: university.shortName,
-          value: Math.round(cat.avgPercentage)
-        }));
-
-        setProfileData({
-          university,
-          rival,
-          profile: profileRes.data!,
-          trendData,
-          heatMapData,
-          rivalryScore,
-          rank,
-        });
-
-      } catch (error) {
-        console.error("Profile load error:", error);
-        // DO NOT throw error here, just handle it to stop the loop
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    loadProfile();
-    return () => { isMounted = false; };
-  }, [id, navigate]);
-
-  if (isLoading) {
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Spinner size="xl" variant="accent" /></div>;
+  if (!uni) {
+    return (
+      <AppLayout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center">
+          <AlertTriangle size={48} className="text-slate-600" />
+          <h2 className="text-xl font-bold text-white">University not found</h2>
+          <p className="text-sm text-slate-500">We don't have data for this institution yet.</p>
+          <Button variant="primary" onClick={() => navigate('/polls')}>
+            Browse all universities
+          </Button>
+        </div>
+      </AppLayout>
+    );
   }
 
-  if (!profileData) {
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">University data unavailable.</div>;
-  }
+  const overallScore = getOverallScore(uni);
+  const rankings = getUniversityRankings();
+  const rank = rankings.findIndex((u) => u.id === uni.id) + 1;
 
-  const { university, rival, profile, trendData, heatMapData, rivalryScore, rank } = profileData;
+  // Sentiment bars
+  const sentimentBars = [
+    { label: 'Academic Quality', value: uni.sentiment.academicQuality, icon: <BookOpen size={14} />, color: 'from-emerald-500 to-teal-500' },
+    { label: 'Facilities', value: uni.sentiment.facilitiesScore, icon: <Home size={14} />, color: 'from-cyan-500 to-blue-500' },
+    { label: 'Social Vibes', value: uni.sentiment.socialVibes, icon: <Sparkles size={14} />, color: 'from-fuchsia-500 to-pink-500' },
+    { label: 'Affordability', value: uni.sentiment.affordability, icon: <Wallet size={14} />, color: 'from-amber-500 to-orange-500' },
+    { label: 'Stability', value: uni.sentiment.stability, icon: <CheckCircle2 size={14} />, color: 'from-green-500 to-emerald-500' },
+    { label: 'Employability', value: uni.sentiment.employability, icon: <Briefcase size={14} />, color: 'from-indigo-500 to-violet-500' },
+  ];
+
+  // Stats cards
+  const stats = [
+    { label: 'Founded', value: uni.founded.toString(), icon: <Calendar size={16} /> },
+    { label: 'Type', value: uni.type, icon: <Building2 size={16} /> },
+    { label: 'Students (approx)', value: uni.studentPopulation.toLocaleString(), icon: <Users size={16} /> },
+    { label: '2026 Intake', value: uni.firstYearIntake2026.toLocaleString(), icon: <GraduationCap size={16} /> },
+    { label: 'Faculties', value: uni.faculties.toString(), icon: <Building2 size={16} /> },
+    { label: 'Campuses', value: uni.campuses.length.toString(), icon: <MapPin size={16} /> },
+  ];
+
+  // Google Maps embed URL (no API key needed — uses public embed)
+  const mapFallbackUrl = `https://maps.google.com/maps?q=${uni.lat},${uni.lng}&z=15&output=embed`;
 
   return (
     <AppLayout>
-      <PageContainer maxWidth="xl" title={`${university.name} Profile`}>
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white flex items-center gap-2 transition-colors text-sm">
-            <ArrowLeft size={16} /> Back
-          </button>
-          <div className="flex gap-2">
-            <ShareButton title={`Check out ${university.name}'s UniPulse Profile`} />
-            <Button variant="primary" size="sm" leftIcon={<Vote size={16} />} onClick={() => navigate(`/vote/general`)}>
-              Vote For {university.shortName}
-            </Button>
-          </div>
-        </div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+        {/* Back link */}
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-cyan-400 transition-colors mb-6"
+        >
+          <ArrowLeft size={14} /> Back
+        </button>
 
-        <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <UniversityProfile 
-            university={university} 
-            stats={{
-              sentimentScore: profile.sentimentScore,
-              totalVotes: profile.totalVotesReceived,
-              rank: rank || 0,
-              strengths: profile.strengths.length > 0 ? profile.strengths.map(s => s.category) : ['New Contender'],
-              weaknesses: profile.weaknesses.length > 0 ? profile.weaknesses.map(w => w.category) : ['Awaiting Votes']
-            }} 
+        {/* ======== HERO HEADER ======== */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="glass rounded-3xl p-6 sm:p-8 mb-6 overflow-hidden relative"
+        >
+          {/* Uni color glow */}
+          <div
+            className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{ background: `radial-gradient(ellipse at top right, ${uni.color}, transparent 70%)` }}
           />
+
+          <div className="relative z-10 flex flex-col sm:flex-row items-start gap-6">
+            {/* Logo circle */}
+            <div
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-3xl font-black text-white shrink-0 border border-white/10"
+              style={{ backgroundColor: uni.color }}
+            >
+              {uni.shortName.slice(0, 3)}
+            </div>
+
+            {/* Title + meta */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant={uni.type === 'Public' ? 'info' : 'neon'} size="sm">
+                  {uni.type}
+                </Badge>
+                {rank <= 3 && (
+                  <Badge variant="warning" size="sm" icon={<Trophy size={10} />}>
+                    #{rank} ranked
+                  </Badge>
+                )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+                {uni.name}
+              </h1>
+              <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
+                <span className="inline-flex items-center gap-1">
+                  <MapPin size={12} /> {uni.location}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Calendar size={12} /> Est. {uni.founded}
+                </span>
+                <a
+                  href={`https://${uni.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  <Globe size={12} /> {uni.website} <ExternalLink size={10} />
+                </a>
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed mt-3 max-w-2xl">
+                {uni.description}
+              </p>
+            </div>
+
+            {/* Overall score ring */}
+            <div className="shrink-0 flex flex-col items-center">
+              <ProgressRing value={overallScore} size={88} stroke={6} />
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">
+                UniPulse Score
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ======== STAT CARDS GRID ======== */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+          {stats.map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <Card padding="sm" className="text-center h-full">
+                <div className="flex justify-center mb-1.5 text-cyan-400">{stat.icon}</div>
+                <div className="text-base font-bold text-white tabular">{stat.value}</div>
+                <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">
+                  {stat.label}
+                </div>
+              </Card>
+            </motion.div>
+          ))}
         </div>
 
-        <SectionDivider label="Performance Analysis" variant="neon" />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          <Card className="h-full min-h-[350px]">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2"><TrendingUp size={18} className="text-cyan-400" /> Sentiment History</h3>
-                <p className="text-xs text-slate-500">6-Month Rating</p>
+        {/* ======== FEE + RANK INFO BAR ======== */}
+        <Card padding="md" className="mb-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <div className="flex-1">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                Fee Range (per semester)
               </div>
-              <Badge variant="success" dot>{trendData.length > 0 ? 'Live' : 'No Data'}</Badge>
+              <div className="text-lg font-bold text-white">{uni.feeRangePerSemester}</div>
             </div>
-            <div className="h-64">
-              {trendData.length > 1 ? (
-                <TrendChart data={trendData} color={university.color} />
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-600 text-sm">Historical trend data will appear here.</div>
-              )}
+            <div className="hidden sm:block w-px h-10 bg-slate-800" />
+            <div className="flex-1">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                UniPulse Rank
+              </div>
+              <div className="text-lg font-bold text-white">
+                #{rank} <span className="text-sm font-normal text-slate-500">of {rankings.length}</span>
+              </div>
+            </div>
+            <div className="hidden sm:block w-px h-10 bg-slate-800" />
+            <div className="flex-1">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                Campuses
+              </div>
+              <div className="text-sm font-semibold text-slate-300 line-clamp-1">
+                {uni.campuses.join(', ')}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* ======== SENTIMENT RADAR / BARS ======== */}
+        <SectionDivider label="Student Sentiment" icon={<TrendingUp size={14} className="text-cyan-400" />} variant="neon" />
+
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
+          {/* Sentiment bars */}
+          <Card padding="md">
+            <h3 className="text-sm font-bold text-white mb-4">How students rate {uni.shortName}</h3>
+            <div className="space-y-4">
+              {sentimentBars.map((bar, i) => (
+                <div key={bar.label}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+                      <span className="text-slate-500">{bar.icon}</span>
+                      {bar.label}
+                    </span>
+                    <span className="text-xs font-bold text-white tabular">{bar.value}/100</span>
+                  </div>
+                  <div className="h-2 bg-slate-800/60 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${bar.value}%` }}
+                      transition={{ duration: 0.8, delay: i * 0.08, ease: 'easeOut' }}
+                      className={`h-full rounded-full bg-gradient-to-r ${bar.color}`}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </Card>
 
-          <div className="flex flex-col gap-6">
-            <Card className="flex-1 bg-slate-900/50">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4"><Swords size={18} className="text-red-500" /> Head-to-Head</h3>
-              {rival ? (
-                <RivalryTracker uni1={university} uni2={rival} score1={rivalryScore.score1} score2={rivalryScore.score2} category="Overall Wins" />
-              ) : (
-                <div className="text-center py-10 text-slate-500 text-sm">No primary rival identified yet.</div>
+          {/* Tags + signals */}
+          <Card padding="md">
+            <h3 className="text-sm font-bold text-white mb-4">What students say on X</h3>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {uni.tags.map((tag) => {
+                const isNegative = /strike|worst|roast|missing|stress|remote/i.test(tag);
+                return (
+                  <Badge key={tag} variant={isNegative ? 'danger' : 'success'} size="sm">
+                    {tag}
+                  </Badge>
+                );
+              })}
+            </div>
+            <div className="space-y-2 text-xs text-slate-400">
+              {uni.sentiment.stability < 35 && (
+                <div className="flex items-start gap-2 text-red-400">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                  <span>Students report frequent strike disruptions and unstable academic calendar.</span>
+                </div>
               )}
-            </Card>
-
-            <Card className="flex-1">
-              <h3 className="text-sm font-bold text-white mb-4">Category Heatmap</h3>
-              {heatMapData.length > 0 ? (
-                <HeatMap data={heatMapData} xLabels={['Vibes', 'Academics', 'Sports', 'Social', 'Facilities']} yLabels={[university.shortName]} />
-              ) : (
-                <div className="text-center py-6 text-slate-600 text-xs">Insufficient data for heatmap visualization.</div>
+              {uni.sentiment.facilitiesScore < 40 && (
+                <div className="flex items-start gap-2 text-amber-400">
+                  <Home size={14} className="mt-0.5 shrink-0" />
+                  <span>Multiple complaints about hostel conditions and campus infrastructure.</span>
+                </div>
               )}
-            </Card>
-          </div>
+              {uni.sentiment.affordability < 30 && (
+                <div className="flex items-start gap-2 text-amber-400">
+                  <Wallet size={14} className="mt-0.5 shrink-0" />
+                  <span>Students consider this university expensive for the value offered.</span>
+                </div>
+              )}
+              {uni.sentiment.stability > 80 && (
+                <div className="flex items-start gap-2 text-emerald-400">
+                  <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+                  <span>Zero strike culture — students praise the stable academic calendar.</span>
+                </div>
+              )}
+              {uni.sentiment.employability > 75 && (
+                <div className="flex items-start gap-2 text-emerald-400">
+                  <Briefcase size={14} className="mt-0.5 shrink-0" />
+                  <span>Strong graduate outcomes — employers actively recruit from {uni.shortName}.</span>
+                </div>
+              )}
+              {uni.sentiment.socialVibes > 70 && (
+                <div className="flex items-start gap-2 text-fuchsia-400">
+                  <Sparkles size={14} className="mt-0.5 shrink-0" />
+                  <span>One of the best-rated campuses for social life, events, and culture.</span>
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
-      </PageContainer>
+
+        {/* ======== GOOGLE MAPS EMBED ======== */}
+        <SectionDivider label="Location" icon={<MapPin size={14} className="text-cyan-400" />} variant="simple" />
+
+        <Card padding="none" className="overflow-hidden mb-6">
+          <iframe
+            src={mapFallbackUrl}
+            width="100%"
+            height="320"
+            style={{ border: 0 }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={`${uni.name} — map`}
+          />
+        </Card>
+
+        {/* ======== PROGRAMS OFFERED ======== */}
+        <SectionDivider label="Top Programs" icon={<BookOpen size={14} className="text-cyan-400" />} variant="simple" />
+
+        <div className="flex flex-wrap gap-2 mb-8">
+          {uni.programs.map((program) => (
+            <Badge key={program} variant="default" size="md">
+              {program}
+            </Badge>
+          ))}
+        </div>
+
+        {/* ======== COMPARE CTA ======== */}
+        <Card padding="lg" className="bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border-cyan-500/20">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-white">Compare {uni.shortName} with others</h3>
+              <p className="text-sm text-slate-400 mt-1">
+                See how {uni.shortName} stacks up against other Kenyan universities side by side.
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => navigate(`/compare?ids=${uni.id}`)}
+              className="shrink-0"
+            >
+              Compare now <ArrowRight size={16} className="ml-1" />
+            </Button>
+          </div>
+        </Card>
+      </div>
     </AppLayout>
   );
-};
+}
